@@ -1,4 +1,6 @@
-# Pet Log 포트폴리오 정리
+# Pet Log — 기록을 행동으로 연결하는 AI 반려동물 케어 에이전트
+
+> 자연어·음성으로 남긴 반려동물의 일상 기록을 구조화하고, 누적 맥락을 분석해 알림·제안·병원 및 상품 추천으로 연결하는 모바일 우선 웹 서비스
 
 ## 1. 프로젝트 개요
 
@@ -12,8 +14,27 @@
 | 주제 | AI Agent 기반 반려동물 건강/행동 기록 관리 서비스 |
 | 개발 기간 | 2026.04.22 ~ 2026.05.18 |
 | 팀 구성 | 강현준, 김경표, 복만수, 임경빈 |
+| 개인 역할 | 백엔드·AI Agent·외부 API 연동 |
 | 주요 형태 | 모바일 우선 웹 MVP + Python AI Agent 백엔드 |
 | 핵심 가치 | 기록 부담 완화, 누적 맥락 분석, 행동 제안, 알림, 대화형 케어 경험 |
+| 저장소 | [GitHub](https://github.com/fdt15ss/pj04-pet-log) |
+
+### 핵심 결과
+
+- 자연어 기록을 구조화하고, 분석 결과와 함께 SQLite에 저장하는 end-to-end 파이프라인을 구현했습니다.
+- 기록 누락·위험 신호·행동 변화·일정에 따른 알림 후보 생성부터 중복 제거와 읽음 처리까지 연결했습니다.
+- Naver Shopping과 Google Places를 연동하고, API 장애나 빈 결과에도 사용자 흐름이 끊기지 않도록 fallback·cache·rate limit 경계를 마련했습니다.
+- 프론트엔드 단위 테스트와 Playwright, 백엔드 unittest·pytest를 사용해 주요 기능과 계층 경계를 검증했습니다.
+
+### 개인 기여
+
+아래는 팀 전체 구현 가운데 임경빈이 주도한 범위입니다.
+
+- **데이터 영속화**: SQLite 연결과 seed data를 구성하고, 반려동물·기록·일정 repository를 실제 DB 구현으로 연결했습니다. ([database.py](backend/src/infrastructure/database.py), [repositories](backend/src/infrastructure/repositories))
+- **외부 추천 기능**: Naver Shopping 상품 검색/추천과 Google Places 위치 기반 동물병원 추천을 구현하고, fallback·cache·rate limit middleware를 추가했습니다. ([shopping](backend/src/infrastructure/shopping), [hospital.py](backend/src/application/agents/hospital.py), [middleware](backend/src/middleware))
+- **커뮤니티 end-to-end 연동**: 게시판·게시글·댓글·반응 API와 repository를 구현하고, Next.js 커뮤니티 화면을 실제 API에 연결했습니다. ([community_routes.py](backend/src/presentation/http/community_routes.py), [community page](frontend/app/web/src/app/community/page.tsx))
+- **AI workflow 개선**: 프로젝트 종료 후 쇼핑 추천의 카테고리 준비, 검색, 후보 선택, 결과 생성을 LangGraph 상태 전이로 분리해 단계별 테스트가 가능한 흐름으로 개선했습니다. ([shopping.py](backend/src/application/agents/shopping.py))
+- **검증**: 데이터베이스, 커뮤니티, 쇼핑, 병원 추천의 단위·HTTP·smoke test를 작성해 정상 경로와 실패 경로를 함께 검증했습니다. ([backend tests](backend/tests))
 
 ## 2. 문제 정의
 
@@ -100,11 +121,35 @@ Pet Log는 기록 앱이 아니라 **기록을 해석하고 다음 행동으로 
 | `/shared-care` | 공동 관리 |
 | `/settings` | 설정 |
 
-### UI 참고 이미지
+### 전체 화면 구성
 
-![Pet Log UI](pet-log-ui.png)
+![Pet Log 전체 화면 구성](frontend/_workspace/portfolio-screenshots/selected/portfolio-01-overall-screens.png)
 
-![Pet Log Chatbot](chat-bot.png)
+### 자연어 기록 구조화
+
+보호자가 자연어로 기록하면 AI가 카테고리와 상세 항목으로 구조화하고, 사용자가 저장 전에 결과를 확인할 수 있습니다.
+
+![자연어 기록 입력과 AI 구조화 미리보기](frontend/_workspace/portfolio-screenshots/selected/portfolio-04-record-ai-structure.png)
+
+### 기록 기반 분석
+
+저장된 기록을 기간·카테고리별로 모아 변화와 패턴을 보여주고, AI 분석 결과를 다음 행동으로 연결합니다.
+
+![기록 기반 분석 리포트](frontend/_workspace/portfolio-screenshots/selected/portfolio-05-analysis-report.png)
+
+### 외부 서비스 연동
+
+누적 기록과 반려동물 맥락을 상품 추천에 반영하고, 병원 상담에 필요한 기록 요약을 제공합니다.
+
+![기록 기반 쇼핑 추천](frontend/_workspace/portfolio-screenshots/selected/portfolio-06-shopping-recommendation.png)
+
+![병원 상담용 기록 요약](frontend/_workspace/portfolio-screenshots/selected/portfolio-07-hospital-report.png)
+
+### AI 케어 질문
+
+홈의 선제 질문과 별도 케어 패널을 통해 기록 맥락에 기반한 질문 흐름으로 진입할 수 있습니다.
+
+![AI 질문 진입 흐름](frontend/_workspace/portfolio-screenshots/selected/portfolio-02-ai-question-flow.png)
 
 ## 6. 기술 스택
 
@@ -199,27 +244,16 @@ LangGraph는 모든 에이전트에 무조건 적용하지 않고, 상태 전이
 
 ## 9. 주요 API 구현
 
-백엔드는 FastAPI 기반으로 다음 API를 구현했습니다.
+백엔드는 FastAPI 기반으로 기능별 API 경계를 구성했습니다.
 
-- `GET /api/v1/me`: 현재 사용자 정보 조회
-- `GET /api/v1/pets`: 반려동물 목록 조회
-- `GET /api/v1/pet-log/records`: 특정 반려동물의 최근 기록 조회
-- `POST /api/v1/pet-log/records`: 자연어 기록 입력 pipeline 실행
-- `GET /api/v1/pet-log/schedules`: 일정 목록 조회
-- `POST /api/v1/files`: 이미지 업로드
-- `GET /api/v1/files/{file_id}`: 업로드 이미지 다운로드
-- `POST /api/v1/speech/transcriptions`: 음성 파일 STT 변환
-- `POST /api/v1/speech/text-corrections`: 변환된 음성 문장 보정
-- `GET /api/v1/notifications`: 실시간 알림 후보 생성 및 DB 조회
-- `PATCH /api/v1/notifications/{id}/read`: 알림 읽음 처리
-- `PUT /api/v1/notifications/read`: 읽음 알림 목록 저장
-- `POST /api/v1/hospitals/recommendations`: 위치 기반 동물병원 추천
-- `GET /api/v1/shopping/recommendations`: Naver Shopping + LLM 기반 상품 추천
-- `GET /api/v1/community/boards`: 커뮤니티 게시판 및 피드 조회
-- `GET /api/v1/community/posts`: 커뮤니티 글 목록 조회
-- `POST /api/v1/community/posts`: 커뮤니티 글 작성
-- `POST /api/v1/community/posts/{post_id}/comments`: 댓글 작성
-- `POST /api/v1/community/posts/{post_id}/reactions`: 글 반응 처리
+| 영역 | 주요 endpoint | 책임 |
+| --- | --- | --- |
+| 사용자·반려동물 | `GET /api/v1/me`, `GET /api/v1/pets` | 사용자와 반려동물 프로필 조회 |
+| 기록·일정 | `GET·POST /api/v1/pet-log/records`, `GET /api/v1/pet-log/schedules` | 자연어 기록 파이프라인 실행, 기록 및 일정 조회 |
+| 파일·음성 | `POST·GET /api/v1/files`, `POST /api/v1/speech/*` | 이미지 업로드, STT 변환, 음성 문장 보정 |
+| 알림 | `GET·PATCH·PUT /api/v1/notifications*` | 알림 후보 생성, 조회, 읽음 상태 관리 |
+| 추천 | `POST /api/v1/hospitals/recommendations`, `GET /api/v1/shopping/recommendations` | 위치 기반 병원 추천, Naver Shopping과 LLM 기반 상품 추천 |
+| 커뮤니티 | `GET·POST /api/v1/community/*` | 게시판·게시글·댓글·반응 관리 |
 
 ## 10. 검증 및 품질 관리
 
@@ -287,33 +321,31 @@ bash scripts/azure-deploy.sh <resource-group> <app-name> [subscription]
 - Gemma(Ollama)와 GPT를 primary/fallback으로 전환할 수 있는 하이브리드 LLM 구조를 지원했습니다.
 - RAG, 이미지 기록 이해, 병원 제출용 리포트, 커머스 개인화로 확장 가능한 경계를 마련했습니다.
 
-## 13. 회고
+## 13. 핵심 문제 해결과 회고
 
-### 데이터 정규화가 AI 기능의 기반이었다
+### 13.1 메모리 저장소를 SQLite 영속 저장소로 전환
 
-자연어, 음성, 사진처럼 입력 형태가 다양해질수록 동일한 기록 계약으로 정규화하는 과정이 중요했습니다. 기록 구조가 안정되어야 분석, 알림, 제안, 타임라인 조회가 같은 데이터를 기준으로 연결될 수 있었습니다.
+- **문제**: 프로세스를 재시작하면 기록과 일정이 사라져 실제 사용자 흐름과 API 통합을 검증하기 어려웠습니다.
+- **해결**: DB 연결과 schema 초기화, seed data, 도메인별 repository를 분리하고 composition root에서 실제 구현체를 주입했습니다.
+- **결과**: 기록·일정·반려동물·커뮤니티 데이터를 같은 저장소에서 조회할 수 있게 되었고, HTTP 테스트에서도 영속화 경계를 검증할 수 있었습니다.
 
-### 건강 도메인에서는 안전 경계가 중요했다
+### 13.2 외부 API 실패가 서비스 실패로 번지지 않도록 설계
 
-반려동물 건강 맥락에서는 AI가 편리한 답변을 제공하는 것보다 진단성 표현을 피하고, 위험 신호가 있을 때 병원 상담을 권장하는 것이 중요했습니다. 그래서 위험 감지와 제안 문구는 행동 판단을 돕되 의료적 결정을 대체하지 않도록 설계했습니다.
+- **문제**: Naver Shopping과 Google Places는 API key 누락, rate limit, 빈 검색 결과, 일시적 장애가 발생할 수 있습니다.
+- **해결**: 쇼핑은 규칙 기반 검색 fallback을, 병원은 Google Maps 검색 링크 fallback을 제공했습니다. 병원 검색에는 cache와 rate limit middleware도 적용했습니다.
+- **결과**: 외부 provider가 실패해도 빈 화면이나 서버 오류 대신 사용자가 이어서 행동할 수 있는 최소 결과를 반환하도록 만들었습니다.
 
-### 누적 맥락이 제품 차별점이 되었다
+### 13.3 기능 복잡도에 맞춰 LangGraph 적용 범위를 결정
 
-단발성 질문에 답하는 AI보다 최근 기록, 일정, 프로필, 반복 패턴을 함께 보는 AI가 보호자에게 더 실질적인 도움을 줄 수 있었습니다. Pet Log의 핵심 차별점은 데이터를 저장하는 것이 아니라 누적 맥락을 해석해 다음 행동으로 연결하는 데 있습니다.
+- **문제**: 모든 AI 기능을 graph로 표현하면 기술 구조는 통일되지만, 단순한 규칙 흐름까지 불필요하게 복잡해질 수 있었습니다.
+- **해결**: 카테고리 준비 → 상품 검색 → LLM 후보 선택 → 결과 생성으로 상태 전이가 분명한 쇼핑 추천에는 LangGraph를 적용했습니다. 응급 문맥과 검색 조건 판단이 중심인 병원 추천은 application agent와 provider/middleware 조합으로 유지했습니다.
+- **결과**: 쇼핑 추천은 노드별 상태와 실패 지점을 테스트할 수 있고, 병원 추천은 짧고 명시적인 제어 흐름을 유지했습니다.
 
-### LangGraph는 복잡한 흐름에 선택적으로 적용해야 했다
+### 13.4 건강 도메인의 안전 경계 유지
 
-처음에는 병원 추천과 쇼핑 추천을 모두 같은 방식의 에이전트로 설명하고 싶었지만, 실제 구현을 진행하면서 두 기능의 복잡도가 다르다는 점이 드러났습니다. 쇼핑 추천은 LLM으로 검색 카테고리를 만들고, 외부 API 결과를 받은 뒤, 다시 LLM으로 Top 3 후보 중 하나를 고르고 추천 이유를 붙이는 다단계 흐름이었습니다. 그래서 LangGraph로 노드를 나누는 편이 테스트와 설명 모두에 유리했습니다.
-
-반대로 병원 추천은 응급 키워드, 야간 시간대, 검색 반경, 24시간 운영 여부처럼 규칙 기반 판단이 핵심이었습니다. 이 흐름까지 그래프로 감싸면 포트폴리오상 기술 사용은 더 화려해 보일 수 있지만, 실제 코드에서는 provider와 middleware 조합이 더 단순하고 명확했습니다. 이 시행착오를 통해 기술을 많이 쓰는 것보다, 문제의 단계 수와 실패 지점에 맞게 적용 범위를 정하는 것이 더 중요하다는 점을 확인했습니다.
-
-### 외부 API 에이전트는 실패 경로 설계가 핵심이었다
-
-쇼핑 추천에서는 Naver API 결과가 비어 있거나 LLM 선택이 실패하는 경우를 고려해야 했고, 병원 추천에서는 Google Places API key 누락, rate limit, 검색 실패 상황에서도 보호자에게 최소한의 다음 행동을 안내해야 했습니다. 그래서 두 에이전트 모두 성공 흐름보다 fallback 흐름을 먼저 안정화하는 데 시간이 들었습니다. 결과적으로 쇼핑은 규칙 기반 네이버 검색 fallback, 병원은 Google Maps 검색 링크 fallback과 캐시/rate limit middleware를 두어 외부 API 의존으로 서비스 경험이 끊기지 않도록 설계했습니다.
-
-### 확장 가능한 계층 구조가 후속 기능의 여지를 만들었다
-
-초기 MVP 범위 안에서도 병원 추천, 쇼핑 추천, 음성 입력, RAG, 이미지 이해 같은 기능이 함께 고려되었습니다. 계층과 provider 경계를 분리해 둔 덕분에 후속 기능을 추가할 때 기존 제품 흐름을 크게 흔들지 않고 확장할 수 있는 기반을 확보했습니다.
+- **문제**: 반려동물 건강 정보에서 AI 답변이 진단이나 처방처럼 받아들여질 수 있습니다.
+- **해결**: 위험 신호 탐지와 행동 제안을 분리하고, 진단성 표현 대신 관찰 항목과 병원 상담 권장 문구를 제공하도록 설계했습니다.
+- **배운 점**: AI의 답변 범위를 넓히는 것보다 사용자가 안전하게 다음 행동을 선택하도록 경계를 명확히 하는 것이 더 중요했습니다.
 
 ## 14. 향후 개선 방향
 
