@@ -257,62 +257,33 @@ LangGraph는 모든 에이전트에 무조건 적용하지 않고, 상태 전이
 
 ## 10. 검증 및 품질 관리
 
-프론트엔드 검증 명령은 다음과 같습니다.
+검증은 세 축으로 구성했습니다.
+
+| 축 | 내용 |
+| --- | --- |
+| 프론트엔드 | `tsx --test` 단위 테스트, Playwright E2E, lint·typecheck·build |
+| 백엔드 | unittest 기반 **테스트 265개 / 39개 파일**. 정상 경로와 실패 경로를 분리해 작성 |
+| 계층 경계 | 정적 검사로 아키텍처 규칙 위반을 탐지 |
+
+세 번째 축이 이 프로젝트에서 특히 효과가 컸습니다. `application`과 `domain` 계층이 외부 framework나 SDK에 직접 의존하지 않아야 한다는 규칙을 문서가 아니라 **실행 가능한 명령**으로 만들어, 위반이 생기면 바로 드러나게 했습니다.
 
 ```bash
-cd frontend/app/web
-npm test
-npm run lint
-npm run typecheck
-npm run build
-npm run test:e2e
-npm run eval
-```
-
-백엔드 검증 명령은 다음과 같습니다.
-
-```bash
-cd backend
-uv run python -B -m unittest discover -s tests -v
-uv run python -B -c "import application, agent_runtime, middleware, tools, infrastructure, presentation, composition; print('target imports ok')"
+# 출력이 없어야 정상 — 도메인/애플리케이션 계층에 외부 SDK가 새어 들어오지 않았는지 검사
 rg -n "fastapi|openai|sqlalchemy|sqlite|postgres|psycopg" src/application src/domain
 ```
 
-마지막 명령은 `application`과 `domain` 계층이 외부 framework나 SDK에 직접 의존하지 않는지 확인하기 위한 경계 검증입니다. 기대 결과는 출력이 없는 상태입니다.
+이 규칙이 지켜졌기 때문에 13.1의 저장소 교체가 상위 코드 변경 없이 가능했습니다. 전체 검증 명령은 [README](README.md)에 정리했습니다.
 
 ## 11. 배포 준비
 
-프론트엔드는 Next.js App Router와 API route를 사용하므로 정적 호스팅이 아니라 Node.js 런타임이 있는 Azure App Service 배포를 기준으로 구성했습니다.
+프론트엔드는 Next.js App Router와 API route를 사용하므로 정적 호스팅이 아니라 **Node.js 런타임이 있는 Azure App Service**를 기준으로 구성했습니다. 백엔드도 같은 App Service에 FastAPI로 배포합니다. 양쪽 모두 package/deploy 2단계 스크립트를 제공해, 빌드 산출물 생성과 배포를 분리했습니다.
 
-```bash
-cd frontend/app/web
-npm run azure:package
-npm run azure:deploy -- pet-log-rg pet-log-kp-20260504 "Azure for Students"
-```
+- 프론트엔드: `npm run azure:package`, `npm run azure:deploy`
+- 백엔드: [scripts/azure-package.sh](backend/scripts/azure-package.sh), [scripts/azure-deploy.sh](backend/scripts/azure-deploy.sh)
 
-백엔드는 FastAPI 기반 Azure App Service 배포 스크립트를 제공합니다.
+## 12. 설계 성과
 
-```bash
-cd backend
-bash scripts/azure-package.sh
-bash scripts/azure-deploy.sh <resource-group> <app-name> [subscription]
-```
-
-## 12. 프로젝트 성과
-
-### 12.1 기능 구현 성과
-
-- 모바일 우선 Next.js 웹 MVP를 구현했습니다.
-- 홈, 기록, 분석, 타임라인, 알림, 일정, 프로필, 커뮤니티, 병원, 쇼핑 등 주요 화면을 구성했습니다.
-- 자연어 기록 입력을 구조화하고, 분석 후 DB에 저장하는 backend pipeline을 연결했습니다.
-- FastAPI와 SQLite 기반으로 기록, 일정, 알림, 파일, 음성, 병원 추천, 커뮤니티, 쇼핑 추천 API를 구현했습니다.
-- 알림 후보 생성, 중복 제거, 읽음 처리까지 포함한 알림 파이프라인을 구현했습니다.
-- Naver Shopping API와 LLM을 결합한 쇼핑 추천 흐름을 LangGraph 기반 에이전트로 구현했습니다.
-- Google Places API 기반 동물병원 추천과 fallback 처리를 구현했습니다.
-- 프론트엔드 단위 테스트, Playwright QA, 백엔드 unittest 검증 체계를 정리했습니다.
-- Azure App Service 배포 스크립트와 운영 문서를 마련했습니다.
-
-### 12.2 설계 성과
+구현 범위는 4장과 9장에, 문제 해결 과정은 13장에 정리했습니다. 이 장에는 그중 **설계 판단에 해당하는 결과만** 남겼습니다.
 
 - 단순 기록 앱이 아니라 기록, 분석, 제안, 알림, 대화로 이어지는 agent 제품 흐름을 설계했습니다.
 - `presentation -> application -> infrastructure` 계층 구조로 HTTP, DB, LLM SDK 의존성을 분리했습니다.
@@ -325,31 +296,205 @@ bash scripts/azure-deploy.sh <resource-group> <app-name> [subscription]
 
 ### 13.1 메모리 저장소를 SQLite 영속 저장소로 전환
 
-- **문제**: 프로세스를 재시작하면 기록과 일정이 사라져 실제 사용자 흐름과 API 통합을 검증하기 어려웠습니다.
-- **해결**: DB 연결과 schema 초기화, seed data, 도메인별 repository를 분리하고 composition root에서 실제 구현체를 주입했습니다.
-- **결과**: 기록·일정·반려동물·커뮤니티 데이터를 같은 저장소에서 조회할 수 있게 되었고, HTTP 테스트에서도 영속화 경계를 검증할 수 있었습니다.
-- **배운 점**: 저장소를 나중에 교체하더라도, repository interface와 composition root 주입 경계를 먼저 잡아두면 전환 비용이 크게 줄어든다는 점을 확인했습니다.
+**문제**
 
-### 13.2 외부 API 실패가 서비스 실패로 번지지 않도록 설계
+초기 구현은 모든 repository가 파이썬 리스트에 데이터를 담는 in-memory 구조였습니다. 프로세스를 재시작하면 기록·일정·알림이 사라져 "기록 → 분석 → 알림"으로 이어지는 실제 사용자 흐름을 한 번에 검증할 수 없었고, 누적 기록을 전제로 하는 패턴 분석과 누락 기록 탐지를 확인할 방법이 없었습니다.
 
-- **문제**: Naver Shopping과 Google Places는 API key 누락, rate limit, 빈 검색 결과, 일시적 장애가 발생할 수 있습니다.
-- **해결**: 쇼핑은 규칙 기반 검색 fallback을, 병원은 Google Maps 검색 링크 fallback을 제공했습니다. 병원 검색에는 cache와 rate limit middleware도 적용했습니다.
-- **결과**: 외부 provider가 실패해도 빈 화면이나 서버 오류 대신 사용자가 이어서 행동할 수 있는 최소 결과를 반환하도록 만들었습니다.
-- **배운 점**: 외부 API 실패는 예외 상황이 아니라 기본 시나리오로 두고, 기능마다 어떤 결과를 최소한으로 보장할지 먼저 정의해야 한다는 것을 알게 되었습니다.
+**판단**
+
+본질은 "DB가 없다"가 아니라 저장소 구현이 애플리케이션 계층에 붙어 있는지 여부였습니다. 그래서 저장 방식을 바꾸는 대신 **주입 지점만 바꾸면 되도록** 설계했습니다.
+
+- `connect()`를 단일 진입점으로 두고 경로 확보, `PRAGMA foreign_keys = ON`, 스키마 생성, seed 투입까지 담당하게 했습니다.
+- 각 repository는 `connection`이 주입되면 SQLite 경로로, 아니면 기존 in-memory 경로로 동작하는 이중 모드로 만들었습니다. 테스트는 가볍게 유지하면서 운영 경로만 DB로 옮길 수 있었습니다.
+- composition root에서만 실제 구현을 주입합니다. 하나의 connection을 기록·일정·프로필·파일·알림·커뮤니티 repository가 공유하고, 파이프라인은 여전히 인터페이스만 봅니다.
+- 삭제는 soft delete로 통일해 모든 조회에 `deleted_at IS NULL`을 두었습니다. 기록을 지워도 과거 분석 맥락이 남습니다.
+
+```python
+# infrastructure/repositories/record_repository.py — 같은 인터페이스, 두 개의 저장 경로
+def list_recent(self, pet_id: str, lookback_days: int) -> tuple[PetRecord, ...]:
+    min_recorded_at = _utc_days_ago(lookback_days)
+    if self._connection is not None:
+        rows = self._connection.execute(..., (pet_id, min_recorded_at)).fetchall()
+        return tuple(_record_from_row(row) for row in rows)
+    return tuple(r for r in self._records if r.pet_id == pet_id and r.recorded_at >= min_recorded_at)
+```
+
+**전환 과정에서 만난 함정**
+
+단위 테스트는 통과하는데 실행 환경에 따라 실패하는 문제가 세 가지 있었습니다. 모두 "환경마다 다른 기본값에 코드가 의존하고 있었다"는 하나의 원인이어서, 문서로 안내하는 대신 코드로 흡수했습니다.
+
+| 증상 | 원인 | 대응 |
+| --- | --- | --- |
+| FastAPI 요청 처리 중 `ProgrammingError` | 동기 라우트가 worker thread에서 실행됨 | `check_same_thread=False` + 공유 자원에 `Lock` |
+| 특정 환경에서만 조회 결과가 비어 나옴 | `full_column_names` PRAGMA에 따라 `row["id"]`가 조용히 실패 | 모든 SELECT에 `AS` 별칭 강제 |
+| 기존 DB 파일을 쓰는 팀원만 오류 | 개발 중 컬럼이 계속 추가됨 | `PRAGMA table_info` 확인 후 없는 컬럼만 `ALTER TABLE` |
+
+**결과**
+
+기록·일정·반려동물·알림·커뮤니티가 하나의 저장소를 공유하게 되어 재시작 이후에도 누적 기록 기반 분석을 그대로 재현할 수 있게 되었습니다. 파이프라인과 에이전트 코드는 한 줄도 바꾸지 않았습니다. 저장·조회, 기간 필터, id 순서 보존, seed 멱등성, 스레드 접근, PRAGMA 변형까지 **테스트 34개**로 검증했습니다.
+
+**회고**
+
+"나중에 DB로 바꾸면 된다"가 통한 이유는 처음부터 repository를 인터페이스로 다뤘기 때문이었습니다. 반대로 in-memory 구현을 너무 오래 유지한 탓에 정렬 기준·시간대·중복처럼 실제 데이터가 쌓여야 드러나는 문제를 늦게 발견했습니다. 환경 의존 버그는 반드시 재현 테스트부터 만들어야 한다는 것도 이때 배웠습니다. `full_column_names` 문제는 PRAGMA를 강제로 켠 테스트를 만든 순간 원인과 수정 방향이 동시에 확정됐습니다.
+
+관련 파일: [database.py](backend/src/infrastructure/database.py), [repositories](backend/src/infrastructure/repositories), [composition.py](backend/src/composition.py)
+
+### 13.2 실패 지점마다 반환값을 먼저 정의해 장애를 격리
+
+**문제**
+
+쇼핑 추천은 Naver Shopping API, 병원 추천은 Google Places API에 의존하고, 쇼핑 추천 내부에는 두 번의 LLM 판단이 더 있습니다. 이들은 API key 미설정, quota 소진, 타임아웃, 결과 0건, LLM 응답 실패로 언제든 결과를 주지 못할 수 있습니다. 예외가 그대로 올라가면 **부가 기능의 실패가 핵심 기능인 기록 저장을 500으로 죽입니다.**
+
+**판단**
+
+`try/except`를 에이전트마다 흩뿌리면 어떤 실패가 어디서 처리되는지 추적할 수 없습니다. 그래서 코드를 쓰기 전에 **각 실패 지점에서 무엇을 반환할지 표로 먼저 확정**했습니다. 핵심은 실패 지점마다 남아 있는 정보의 양이 달라서 복구 정책도 달라야 한다는 점이었습니다.
+
+| 실패 지점 | 반환 | 근거 |
+| --- | --- | --- |
+| 카테고리 생성 LLM 실패 | 빈 추천으로 종료 | 무엇을 추천할지 모르는 상태. 근거 없는 추천을 노출하지 않는 편이 낫습니다 |
+| 검색 결과 0건 + 카테고리 있음 | 규칙 fallback 억제, 빈 결과 | 에이전트가 정한 카테고리를 규칙 추천이 덮어써 모순되는 것을 방지 |
+| 검색 실패 + 카테고리 없음 | 기록 기반 규칙 검색 링크 | 최소한의 다음 행동을 남김 |
+| 후보 선택 LLM 실패 | 첫 번째 후보 유지 | 후보 자체는 유효하므로 추천을 잃을 이유가 없음 |
+| 선택 결과가 후보에 없는 URL | 첫 번째 후보로 대체 | 환각으로 존재하지 않는 상품이 노출되는 경로를 차단 |
+| Google Places 예외 또는 0건 | Google Maps 검색 링크 1건 | 대체 결과임을 알리는 안내 문구를 함께 반환 |
+| rate limit 초과 | 예외가 아니라 빈 결과 | 바깥 fallback 계층이 자연스럽게 흡수하도록 |
+
+이 정책을 에이전트 본문이 아니라 **provider를 감싸는 미들웨어 체인**에 배치해, 계층마다 책임을 하나씩만 갖게 했습니다.
+
+```python
+# composition.py — 바깥에서 안쪽 순서로 fallback → cache/rate limit → 실제 API
+HospitalRecommendationAgent(
+    HospitalFallbackMiddleware(HospitalCacheRateLimitMiddleware(GooglePlacesClient()))
+)
+```
+
+```python
+# application/agents/shopping.py — 선택 단계는 실패해도 후보를 잃지 않는다
+fallback = candidates[0]
+try:
+    selection = self._recommendation_agent.select_recommendation(...)
+except Exception as exc:
+    logger.warning("shopping_selection_agent_failed error=%s detail=%s", exc.__class__.__name__, exc)
+    return fallback
+selected = _find_selected_candidate(selection.product_url, candidates)
+return replace(selected, reason=selection.reason) if selected else fallback
+```
+
+**결과**
+
+- API key가 전혀 없는 환경에서도 서버가 정상 기동하고, 병원·쇼핑 화면이 오류 대신 사용 가능한 대체 결과를 보여줍니다.
+- 동일 좌표(소수점 3자리) 반복 조회는 **TTL 600초 캐시로 외부 호출 1회에 수렴**하고, **60초당 30회** 상한으로 quota 소진을 막습니다. Naver 호출은 **타임아웃 3초**, LLM에는 쿼리당 **상위 3개 후보만** 전달해 토큰과 지연에 상한을 뒀습니다.
+- LLM 한 단계가 실패해도 추천이 사라지지 않고 품질이 한 단계 낮은 결과로 하강합니다. 모든 실패는 예외 클래스명과 함께 구조화 로그로 남습니다.
+- 정상 경로와 실패 경로를 **테스트 19개**(쇼핑 11, 병원 8)로 나눠 검증했습니다.
+
+**회고**
+
+처음에는 "LLM 호출을 `try/except`로 감싸면 된다"고 생각했지만, 중요한 것은 예외를 잡는 일이 아니라 각 실패 지점에서 무엇을 반환할지 결정하는 일이었습니다. 이 결정을 표로 정리하고 나서야 실패 케이스별로 테스트를 나눌 수 있었고, "이 기능은 실패하면 무엇을 보여주는가"를 코드로 설명할 수 있게 되었습니다.
+
+관련 파일: [shopping.py](backend/src/application/agents/shopping.py), [middleware](backend/src/middleware), [naver_shopping.py](backend/src/infrastructure/shopping/naver_shopping.py)
 
 ### 13.3 기능 복잡도에 맞춰 LangGraph 적용 범위를 결정
 
-- **문제**: 모든 AI 기능을 graph로 표현하면 기술 구조는 통일되지만, 단순한 규칙 흐름까지 불필요하게 복잡해질 수 있었습니다.
-- **해결**: 카테고리 준비 → 상품 검색 → LLM 후보 선택 → 결과 생성으로 상태 전이가 분명한 쇼핑 추천에는 LangGraph를 적용했습니다. 응급 문맥과 검색 조건 판단이 중심인 병원 추천은 application agent와 provider/middleware 조합으로 유지했습니다.
-- **결과**: 쇼핑 추천은 노드별 상태와 실패 지점을 테스트할 수 있고, 병원 추천은 짧고 명시적인 제어 흐름을 유지했습니다.
-- **배운 점**: 프레임워크를 일괄 적용하는 것보다, 상태 전이가 분명하고 단계별 관찰이 필요한 흐름에만 선택적으로 도입하는 판단이 더 중요했습니다.
+**문제**
+
+모든 AI 기능을 graph로 표현하면 기술 스택은 통일되지만, 단순한 규칙 흐름까지 상태 타입·노드·엣지를 정의해야 해서 코드가 길어지고 제어 흐름이 엣지 선언으로 흩어집니다. 무엇보다 "왜 LangGraph를 썼는가"에 "요구사항이라서"라고 답하게 됩니다.
+
+**판단**
+
+기준을 **"상태 전이가 존재하는가"** 하나로 정하고, 다음 셋 중 둘 이상을 만족할 때만 적용했습니다.
+
+1. 단계가 3개 이상이고 각 단계가 앞 단계 결과에 의존한다.
+2. 중간에 조건부 분기가 필요하다.
+3. 단계별 중간 상태를 관찰하거나 개별적으로 테스트할 가치가 있다.
+
+**적용한 곳 ① 기록 입력 파이프라인** — `detect_risk` 이후 조건부 엣지로 미리보기 흐름과 저장 흐름이 갈립니다. "AI 구조화 결과를 확인한 뒤 저장한다"는 제품 요구사항이 그래프 구조에 그대로 드러납니다.
+
+```text
+structure_record → load_context → analyze_context → detect_risk
+   ├─(미리보기 또는 확인 필요)→ build_confirmation_result → END
+   └─(확정 저장)→ save_records → suggest_care → recommend_shopping → plan_reminders → build_saved_result → END
+```
+
+**적용한 곳 ② 쇼핑 추천** — `prepare_categories → search_products → select_recommendations → build_result`. 13.2의 실패 정책이 노드 경계와 정확히 일치합니다.
+
+**적용하지 않은 곳: 병원 추천** — 응급 판단 → 반경 조정 → 검색 → 필터·정렬이 모두 분기 없는 단일 경로이고 각 단계가 순수 함수에 가까워, 일반 application agent로 두는 편이 짧고 명확했습니다.
+
+```python
+# application/agents/hospital.py — graph 없이도 읽히는 선형 흐름
+emergency_mode = query.emergency or _is_late_hour(current_time) or _has_emergency_terms(query.text)
+radius_meters = max(query.radius_meters, 10_000) if emergency_mode else query.radius_meters
+hospitals = self._hospital_provider.search(
+    ..., search_query="24시 동물병원" if emergency_mode else "동물병원", require_24_hours=emergency_mode,
+)
+```
+
+**결과**
+
+graph를 쓴 흐름은 `stream_updates()`로 노드 단위 상태 변화를 스트리밍하고, 노드가 끝날 때마다 갱신된 상태 키를 로그로 남깁니다. 덕분에 미리보기 분기와 저장 분기를 각각 **테스트 7개**로 나눠 검증할 수 있었습니다. 반대로 단순한 흐름은 짧고 명시적인 코드로 남았고, 기술 선택에 대해 "이 기능은 왜 graph가 아닌가"까지 근거를 갖고 설명할 수 있게 되었습니다.
+
+**회고**
+
+프레임워크를 넓게 적용하는 것보다 적용 기준을 명문화하는 쪽이 더 어려웠습니다. 실제로 초기에는 병원 추천도 graph로 만들려다, 노드 3개가 전부 단순 대입인 것을 보고 되돌렸습니다. 도구는 문제의 형태를 따라가야지 문제를 도구의 형태로 바꾸면 안 된다는 것을 배웠습니다.
+
+관련 파일: [pet_log_graph.py](backend/src/application/pipelines/pet_log_graph.py), [hospital.py](backend/src/application/agents/hospital.py)
 
 ### 13.4 건강 도메인의 안전 경계 유지
 
-- **문제**: 반려동물 건강 정보에서 AI 답변이 진단이나 처방처럼 받아들여질 수 있습니다.
-- **해결**: 위험 신호 탐지와 행동 제안을 분리하고, 진단성 표현 대신 관찰 항목과 병원 상담 권장 문구를 제공하도록 설계했습니다.
-- **결과**: 위험 신호가 감지된 경우에도 답변이 진단이 아니라 관찰 항목과 병원 상담 권장으로 수렴하도록 만들어, 케어 질문과 제안 흐름 전반에서 같은 안전 경계를 유지했습니다.
-- **배운 점**: AI의 답변 범위를 넓히는 것보다 사용자가 안전하게 다음 행동을 선택하도록 경계를 명확히 하는 것이 더 중요했습니다.
+**문제**
+
+Pet Log는 구토, 혈변, 호흡 이상, 식욕 저하처럼 건강과 직결된 기록을 다룹니다. 사용자는 "병원 가야 하나요"를 알고 싶어 하고 LLM은 그럴듯하게 답할 수 있지만, "위염일 가능성이 높습니다" 같은 문장은 병원 방문 결정을 지연시킬 수 있습니다. 반대로 모든 건강 질문을 회피하면 제품 가치가 사라집니다.
+
+**판단**
+
+문제는 모델 성능이 아니라 출력의 역할 정의에 있었습니다. 에이전트가 "판단하는 주체"인지 "판단을 돕는 도구"인지 흐릿하면 출력 문장의 강도도 흐릿해집니다. 그래서 경계를 프롬프트 문장이 아니라 **구조로** 강제했습니다.
+
+- **탐지와 제안을 다른 에이전트로 분리** — `RiskDetectionAgent`는 위험 신호 여부만 판정하고 무엇을 하라는 말은 하지 않습니다. 행동 제안은 `SuggestionAgent`가 담당합니다. 한 에이전트가 "위험하다 + 이렇게 하라"를 동시에 말하지 못하게 막았습니다.
+- **위험 판정은 교체 가능한 정책 객체로** — `RiskSignalPolicy`가 반환한 `SafetyNotice`만 알림으로 승격됩니다. LLM이 위험 여부를 자유롭게 판단하지 못합니다.
+- **출력 어휘 제한** — 진단명·처방 대신 관찰 항목과 병원 상담 권장 문구를 사용하도록 프롬프트와 응답 매퍼를 설계했습니다.
+- **불확실하면 사용자에게 확인 요청** — 구조화 결과의 `needs_confirmation` 플래그가 서면 저장 대신 미리보기 분기로 라우팅합니다(13.3의 조건부 엣지).
+- **응급 문맥은 규칙으로 강화** — "응급·야간·24시·호흡·출혈·경련·중독" 표현이나 22시~6시에는 검색 반경을 10km 이상으로 넓히고 24시간 병원을 우선 정렬합니다. 판단 주체는 LLM이 아니라 명시적 규칙입니다.
+- **반복 노출 차단** — 안전 알림은 `risk` 종류로 분류되고 메시지 해시 기반 중복 제거 키를 받아, 같은 위험이 반복 노출되어 둔감해지는 것을 막습니다.
+- **고위험 도구는 승인과 제한** — `HumanInTheLoopMiddleware` 기반 승인 미들웨어와 함께 재시도, 도구 호출 횟수 제한, 입력 PII 마스킹을 factory로 구성했습니다.
+
+```python
+# application/agents/risk_detection.py — 탐지 에이전트는 판정만 위임한다
+class RiskDetectionAgent:
+    def detect(self, text, records) -> tuple[SafetyNotice, ...]:
+        return self._risk_signal_policy.detect_risks(text, records)
+```
+
+**결과와 한계**
+
+위험 기록이 `risk` 알림으로 승격되는 경로와 중복 제거 키 형식을 **테스트 8개**로 검증했고, 정책이 비어 있을 때도 파이프라인이 안전하게 진행되는지 함께 확인했습니다. 다만 `RiskSignalPolicy`와 `SafetyGuard`는 인터페이스와 배선까지 완성했지만 판정 규칙 본문은 최소 구현 상태입니다. **안전 경계의 구조는 갖췄고 규칙 채우기가 다음 단계**라는 것이 정확한 현재 상태입니다.
+
+**회고**
+
+건강 도메인에서 배운 가장 큰 교훈은 "AI가 무엇을 말할 수 있는가"보다 **"AI가 무엇을 말하면 안 되는가"를 먼저 정해야 한다**는 것이었습니다. 그리고 그 경계는 에이전트 분리와 정책 객체라는 구조로 강제해야 실제로 지켜졌습니다. 프롬프트만으로 막으려 했다면 모델을 바꿀 때마다 다시 무너졌을 것입니다.
+
+관련 파일: [risk_detection.py](backend/src/application/agents/risk_detection.py), [notifications/policy.py](backend/src/infrastructure/notifications/policy.py), [safety.py](backend/src/middleware/safety.py)
+
+### 13.5 프로젝트 회고
+
+**잘한 결정**
+
+- **계층 경계를 처음부터 강제한 것** — `application`과 `domain`이 FastAPI·SQLite·LLM SDK를 모르기 때문에 저장소 교체와 provider 교체가 상위 코드 변경 없이 가능했습니다. 금지 import를 `rg`로 검사하는 명령을 검증 절차에 넣어 경계가 무너지지 않게 했습니다.
+- **실패 정책을 미들웨어로 분리한 것** — "이 기능은 실패하면 무엇을 반환하는가"가 파일 하나에 모여 리뷰와 테스트 대상이 명확해졌습니다.
+- **프레임워크 적용 기준을 명문화한 것** — LangGraph를 쓴 이유와 쓰지 않은 이유를 모두 설명할 수 있게 되었습니다.
+
+**아쉬운 결정**
+
+- **in-memory 저장소를 너무 오래 유지한 것** — 영속화 전환을 첫 스프린트에 넣었어야 했습니다.
+- **정량 평가 지표를 뒤늦게 준비한 것** — 구조화 정확도, 카테고리 적중률, 응답 지연, 실패율을 처음부터 측정했다면 프롬프트 변경의 효과를 숫자로 말할 수 있었을 것입니다. 현재는 **백엔드 테스트 265개**로 동작을 보장하지만, 품질을 수치로 추적하지는 못합니다.
+- **안전 정책의 규칙 구현이 최소 수준인 것** — 인터페이스 설계와 규칙 채우기를 같은 작업 단위로 묶었어야 했습니다.
+
+**다시 한다면 이 순서로**
+
+1. 대표 입력 30~50건과 기대 출력으로 **평가 셋을 먼저** 만들고 시작합니다. 프롬프트를 고칠 때마다 회귀를 확인할 수 있어야 합니다.
+2. 저장소를 처음부터 실제 DB로 두되 repository 인터페이스는 유지합니다.
+3. 각 외부 의존성과 LLM 단계에 대해 **실패 정책 표를 코드보다 먼저** 확정합니다.
+4. 노드 단위 로그와 구조화 로그를 초기에 배선합니다. 나중에 넣으면 이미 디버깅에 시간을 쓴 뒤입니다.
+
+이 프로젝트에서 얻은 핵심 역량은 LLM을 호출하는 능력이 아니라, **LLM과 외부 API가 실패할 수 있다는 전제 위에서 제품이 계속 동작하도록 경계와 정책을 설계하는 능력**입니다.
 
 ## 14. 향후 개선 방향
 
