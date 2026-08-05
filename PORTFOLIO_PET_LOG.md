@@ -272,7 +272,7 @@ LangGraph는 모든 에이전트에 무조건 적용하지 않고, 상태 전이
 rg -n "fastapi|openai|sqlalchemy|sqlite|postgres|psycopg" src/application src/domain
 ```
 
-이 규칙이 지켜졌기 때문에 13.1의 저장소 교체가 상위 코드 변경 없이 가능했습니다. 전체 검증 명령은 [README](README.md)에 정리했습니다.
+이 규칙이 지켜졌기 때문에 SQLite 스키마가 바뀌거나 LLM provider를 교체해도 상위 코드는 그대로 유지됐습니다. 전체 검증 명령은 [README](README.md)에 정리했습니다.
 
 ## 11. 배포 준비
 
@@ -294,52 +294,7 @@ rg -n "fastapi|openai|sqlalchemy|sqlite|postgres|psycopg" src/application src/do
 
 ## 13. 시행착오와 해결 과정
 
-### 13.1 메모리 저장소를 SQLite 영속 저장소로 전환
-
-**문제**
-
-초기 구현은 모든 repository가 파이썬 리스트에 데이터를 담는 in-memory 구조였습니다. 프로세스를 재시작하면 기록·일정·알림이 사라져 "기록 → 분석 → 알림"으로 이어지는 실제 사용자 흐름을 한 번에 검증할 수 없었고, 누적 기록을 전제로 하는 패턴 분석과 누락 기록 탐지를 확인할 방법이 없었습니다.
-
-**판단**
-
-본질은 "DB가 없다"가 아니라 저장소 구현이 애플리케이션 계층에 붙어 있는지 여부였습니다. 그래서 저장 방식을 바꾸는 대신 **주입 지점만 바꾸면 되도록** 설계했습니다.
-
-- `connect()`를 단일 진입점으로 두고 경로 확보, `PRAGMA foreign_keys = ON`, 스키마 생성, seed 투입까지 담당하게 했습니다.
-- 각 repository는 `connection`이 주입되면 SQLite 경로로, 아니면 기존 in-memory 경로로 동작하는 이중 모드로 만들었습니다. 테스트는 가볍게 유지하면서 운영 경로만 DB로 옮길 수 있었습니다.
-- composition root에서만 실제 구현을 주입합니다. 하나의 connection을 기록·일정·프로필·파일·알림·커뮤니티 repository가 공유하고, 파이프라인은 여전히 인터페이스만 봅니다.
-- 삭제는 soft delete로 통일해 모든 조회에 `deleted_at IS NULL`을 두었습니다. 기록을 지워도 과거 분석 맥락이 남습니다.
-
-```python
-# infrastructure/repositories/record_repository.py — 같은 인터페이스, 두 개의 저장 경로
-def list_recent(self, pet_id: str, lookback_days: int) -> tuple[PetRecord, ...]:
-    min_recorded_at = _utc_days_ago(lookback_days)
-    if self._connection is not None:
-        rows = self._connection.execute(..., (pet_id, min_recorded_at)).fetchall()
-        return tuple(_record_from_row(row) for row in rows)
-    return tuple(r for r in self._records if r.pet_id == pet_id and r.recorded_at >= min_recorded_at)
-```
-
-**전환 과정에서 만난 함정**
-
-단위 테스트는 통과하는데 실행 환경에 따라 실패하는 문제가 세 가지 있었습니다. 모두 "환경마다 다른 기본값에 코드가 의존하고 있었다"는 하나의 원인이어서, 문서로 안내하는 대신 코드로 흡수했습니다.
-
-| 증상 | 원인 | 대응 |
-| --- | --- | --- |
-| FastAPI 요청 처리 중 `ProgrammingError` | 동기 라우트가 worker thread에서 실행됨 | `check_same_thread=False` + 공유 자원에 `Lock` |
-| 특정 환경에서만 조회 결과가 비어 나옴 | `full_column_names` PRAGMA에 따라 `row["id"]`가 조용히 실패 | 모든 SELECT에 `AS` 별칭 강제 |
-| 기존 DB 파일을 쓰는 팀원만 오류 | 개발 중 컬럼이 계속 추가됨 | `PRAGMA table_info` 확인 후 없는 컬럼만 `ALTER TABLE` |
-
-**결과**
-
-기록·일정·반려동물·알림·커뮤니티가 하나의 저장소를 공유하게 되어 재시작 이후에도 누적 기록 기반 분석을 그대로 재현할 수 있게 되었습니다. 파이프라인과 에이전트 코드는 한 줄도 바꾸지 않았습니다. 저장·조회, 기간 필터, id 순서 보존, seed 멱등성, 스레드 접근, PRAGMA 변형까지 **테스트 34개**로 검증했습니다.
-
-**회고**
-
-"나중에 DB로 바꾸면 된다"가 통한 이유는 처음부터 repository를 인터페이스로 다뤘기 때문이었습니다. 반대로 in-memory 구현을 너무 오래 유지한 탓에 정렬 기준·시간대·중복처럼 실제 데이터가 쌓여야 드러나는 문제를 늦게 발견했습니다. 환경 의존 버그는 반드시 재현 테스트부터 만들어야 한다는 것도 이때 배웠습니다. `full_column_names` 문제는 PRAGMA를 강제로 켠 테스트를 만든 순간 원인과 수정 방향이 동시에 확정됐습니다.
-
-관련 파일: [database.py](backend/src/infrastructure/database.py), [repositories](backend/src/infrastructure/repositories), [composition.py](backend/src/composition.py)
-
-### 13.2 실패 지점마다 반환값을 먼저 정의해 장애를 격리
+### 13.1 실패 지점마다 반환값을 먼저 정의해 장애를 격리
 
 **문제**
 
@@ -393,7 +348,7 @@ return replace(selected, reason=selection.reason) if selected else fallback
 
 관련 파일: [shopping.py](backend/src/application/agents/shopping.py), [middleware](backend/src/middleware), [naver_shopping.py](backend/src/infrastructure/shopping/naver_shopping.py)
 
-### 13.3 기능 복잡도에 맞춰 LangGraph 적용 범위를 결정
+### 13.2 기능 복잡도에 맞춰 LangGraph 적용 범위를 결정
 
 **문제**
 
@@ -415,7 +370,7 @@ structure_record → load_context → analyze_context → detect_risk
    └─(확정 저장)→ save_records → suggest_care → recommend_shopping → plan_reminders → build_saved_result → END
 ```
 
-**적용한 곳 ② 쇼핑 추천** — `prepare_categories → search_products → select_recommendations → build_result`. 13.2의 실패 정책이 노드 경계와 정확히 일치합니다.
+**적용한 곳 ② 쇼핑 추천** — `prepare_categories → search_products → select_recommendations → build_result`. 13.1의 실패 정책이 노드 경계와 정확히 일치합니다.
 
 **적용하지 않은 곳: 병원 추천** — 응급 판단 → 반경 조정 → 검색 → 필터·정렬이 모두 분기 없는 단일 경로이고 각 단계가 순수 함수에 가까워, 일반 application agent로 두는 편이 짧고 명확했습니다.
 
@@ -438,7 +393,7 @@ graph를 쓴 흐름은 `stream_updates()`로 노드 단위 상태 변화를 스�
 
 관련 파일: [pet_log_graph.py](backend/src/application/pipelines/pet_log_graph.py), [hospital.py](backend/src/application/agents/hospital.py)
 
-### 13.4 건강 도메인의 안전 경계 유지
+### 13.3 건강 도메인의 안전 경계 유지
 
 **문제**
 
@@ -451,7 +406,7 @@ Pet Log는 구토, 혈변, 호흡 이상, 식욕 저하처럼 건강과 직결�
 - **탐지와 제안을 다른 에이전트로 분리** — `RiskDetectionAgent`는 위험 신호 여부만 판정하고 무엇을 하라는 말은 하지 않습니다. 행동 제안은 `SuggestionAgent`가 담당합니다. 한 에이전트가 "위험하다 + 이렇게 하라"를 동시에 말하지 못하게 막았습니다.
 - **위험 판정은 교체 가능한 정책 객체로** — `RiskSignalPolicy`가 반환한 `SafetyNotice`만 알림으로 승격됩니다. LLM이 위험 여부를 자유롭게 판단하지 못합니다.
 - **출력 어휘 제한** — 진단명·처방 대신 관찰 항목과 병원 상담 권장 문구를 사용하도록 프롬프트와 응답 매퍼를 설계했습니다.
-- **불확실하면 사용자에게 확인 요청** — 구조화 결과의 `needs_confirmation` 플래그가 서면 저장 대신 미리보기 분기로 라우팅합니다(13.3의 조건부 엣지).
+- **불확실하면 사용자에게 확인 요청** — 구조화 결과의 `needs_confirmation` 플래그가 서면 저장 대신 미리보기 분기로 라우팅합니다(13.2의 조건부 엣지).
 - **응급 문맥은 규칙으로 강화** — "응급·야간·24시·호흡·출혈·경련·중독" 표현이나 22시~6시에는 검색 반경을 10km 이상으로 넓히고 24시간 병원을 우선 정렬합니다. 판단 주체는 LLM이 아니라 명시적 규칙입니다.
 - **반복 노출 차단** — 안전 알림은 `risk` 종류로 분류되고 메시지 해시 기반 중복 제거 키를 받아, 같은 위험이 반복 노출되어 둔감해지는 것을 막습니다.
 - **고위험 도구는 승인과 제한** — `HumanInTheLoopMiddleware` 기반 승인 미들웨어와 함께 재시도, 도구 호출 횟수 제한, 입력 PII 마스킹을 factory로 구성했습니다.
@@ -473,24 +428,24 @@ class RiskDetectionAgent:
 
 관련 파일: [risk_detection.py](backend/src/application/agents/risk_detection.py), [notifications/policy.py](backend/src/infrastructure/notifications/policy.py), [safety.py](backend/src/middleware/safety.py)
 
-### 13.5 프로젝트 회고
+### 13.4 프로젝트 회고
 
 **잘한 결정**
 
-- **계층 경계를 처음부터 강제한 것** — `application`과 `domain`이 FastAPI·SQLite·LLM SDK를 모르기 때문에 저장소 교체와 provider 교체가 상위 코드 변경 없이 가능했습니다. 금지 import를 `rg`로 검사하는 명령을 검증 절차에 넣어 경계가 무너지지 않게 했습니다.
+- **계층 경계를 처음부터 강제한 것** — `application`과 `domain`이 FastAPI·SQLite·LLM SDK를 모르기 때문에 provider 교체와 미들웨어 추가가 상위 코드 변경 없이 가능했습니다. 금지 import를 `rg`로 검사하는 명령을 검증 절차에 넣어 경계가 무너지지 않게 했습니다.
+- **저장소를 처음부터 SQLite로 둔 것** — 첫 스프린트부터 실제 DB에 기록을 쌓았기 때문에, 누적 기록을 전제로 하는 패턴 분석과 누락 기록 탐지를 만들 때 정렬 기준·시간대·중복 같은 문제를 실제 데이터로 바로 확인할 수 있었습니다.
 - **실패 정책을 미들웨어로 분리한 것** — "이 기능은 실패하면 무엇을 반환하는가"가 파일 하나에 모여 리뷰와 테스트 대상이 명확해졌습니다.
 - **프레임워크 적용 기준을 명문화한 것** — LangGraph를 쓴 이유와 쓰지 않은 이유를 모두 설명할 수 있게 되었습니다.
 
 **아쉬운 결정**
 
-- **in-memory 저장소를 너무 오래 유지한 것** — 영속화 전환을 첫 스프린트에 넣었어야 했습니다.
 - **정량 평가 지표를 뒤늦게 준비한 것** — 구조화 정확도, 카테고리 적중률, 응답 지연, 실패율을 처음부터 측정했다면 프롬프트 변경의 효과를 숫자로 말할 수 있었을 것입니다. 현재는 **백엔드 테스트 265개**로 동작을 보장하지만, 품질을 수치로 추적하지는 못합니다.
 - **안전 정책의 규칙 구현이 최소 수준인 것** — 인터페이스 설계와 규칙 채우기를 같은 작업 단위로 묶었어야 했습니다.
 
 **다시 한다면 이 순서로**
 
 1. 대표 입력 30~50건과 기대 출력으로 **평가 셋을 먼저** 만들고 시작합니다. 프롬프트를 고칠 때마다 회귀를 확인할 수 있어야 합니다.
-2. 저장소를 처음부터 실제 DB로 두되 repository 인터페이스는 유지합니다.
+2. 저장소는 이번처럼 처음부터 실제 DB로 두고 repository 인터페이스를 함께 유지합니다.
 3. 각 외부 의존성과 LLM 단계에 대해 **실패 정책 표를 코드보다 먼저** 확정합니다.
 4. 노드 단위 로그와 구조화 로그를 초기에 배선합니다. 나중에 넣으면 이미 디버깅에 시간을 쓴 뒤입니다.
 
