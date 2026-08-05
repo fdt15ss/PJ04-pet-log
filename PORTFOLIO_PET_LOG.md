@@ -298,7 +298,7 @@ rg -n "fastapi|openai|sqlalchemy|sqlite|postgres|psycopg" src/application src/do
 
 **문제**
 
-쇼핑 추천은 Naver Shopping API, 병원 추천은 Google Places API에 의존하고, 쇼핑 추천 내부에는 두 번의 LLM 판단이 더 있습니다. 이들은 API key 미설정, quota 소진, 타임아웃, 결과 0건, LLM 응답 실패로 언제든 결과를 주지 못할 수 있습니다. 예외가 그대로 올라가면 **부가 기능의 실패가 핵심 기능인 기록 저장을 500으로 죽입니다.**
+쇼핑 추천은 Naver Shopping API, 병원 추천은 Google Places API에 의존하고, 쇼핑 추천 내부에는 두 번의 LLM 판단이 더 있습니다. 이들은 API key 미설정, quota 소진, 타임아웃, 결과 0건, LLM 응답 실패로 언제든 결과를 주지 못할 수 있습니다. 그런데 쇼핑 추천은 기록 저장과 같은 요청, 같은 그래프 안에서 `save_records → suggest_care → recommend_shopping` 순으로 실행됩니다. 예외가 그대로 올라가면 쇼핑 추천 한 단계의 실패가 요청 전체를 500으로 만듭니다. 기록은 이미 DB에 저장된 뒤인데 사용자에게는 저장 실패로 보여, 재시도로 같은 기록이 중복 저장됩니다. **부가 기능의 실패가 핵심 기능의 성공까지 무효로 만드는 구조입니다.**
 
 **판단**
 
