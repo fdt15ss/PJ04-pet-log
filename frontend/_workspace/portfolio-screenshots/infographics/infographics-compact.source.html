@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #ffffff;
+    font-family: "Pretendard", "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", sans-serif;
+    color: #1f2922;
+    padding: 20px;
+  }
+  .board {
+    width: 440px;
+    background: #ffffff;
+    padding: 4px 2px;
+    margin-bottom: 32px;
+  }
+
+  .kicker {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    padding: 5px 10px;
+    border-radius: 999px;
+  }
+  .kicker.shop { background: #fff2df; color: #bb721e; }
+  .kicker.hosp { background: #eaf2ff; color: #2e67a7; }
+  h1 { font-size: 19px; font-weight: 900; margin-top: 10px; letter-spacing: -0.02em; line-height: 1.35; }
+  .sub { margin-top: 6px; font-size: 12px; font-weight: 600; color: #7b8677; line-height: 1.5; }
+
+  .flow { margin-top: 16px; }
+
+  .edge { height: 14px; display: flex; align-items: center; }
+  .edge span { color: #c3ccbe; font-size: 13px; line-height: 1; margin-left: 15px; }
+
+  .io {
+    border: 1px dashed #d6ded0;
+    border-radius: 12px;
+    padding: 9px 12px;
+    font-size: 12.5px;
+    font-weight: 800;
+    color: #4c574a;
+    background: #fbfcf9;
+  }
+  .io .tag { font-size: 10px; font-weight: 800; color: #9aa694; letter-spacing: 0.06em; margin-right: 6px; }
+
+  .step {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 10px;
+    border-radius: 12px;
+    padding: 10px 12px;
+    border: 1px solid #dfe6d9;
+    background: #f8faf5;
+  }
+  .step.shop { background: #fffaf2; border-color: #f0dcc0; }
+  .step.hosp { background: #f5f8fd; border-color: #d8e3f2; }
+  .idx {
+    width: 26px; height: 26px; border-radius: 8px;
+    display: grid; place-items: center;
+    font-size: 12px; font-weight: 900; color: #ffffff;
+  }
+  .step.shop .idx { background: #d08a2c; }
+  .step.hosp .idx { background: #3d78b8; }
+  .name { font-size: 13.5px; font-weight: 900; letter-spacing: -0.01em; }
+  .name code { font-family: "Consolas", "D2Coding", monospace; font-size: 13px; color: #16804b; }
+  .desc { margin-top: 3px; font-size: 11.5px; font-weight: 600; line-height: 1.55; color: #5b6558; }
+  .desc b { font-weight: 800; color: #35402f; }
+
+  .foot {
+    margin-top: 14px;
+    border-radius: 12px;
+    background: #fdf3f0;
+    padding: 9px 12px;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.6;
+    color: #a8503d;
+  }
+  .foot .lab { color: #7e3a2c; font-weight: 900; }
+</style>
+</head>
+<body>
+
+<div class="board" id="shopping-compact">
+  <span class="kicker shop">쇼핑 추천 에이전트</span>
+  <h1>기록을 근거로 상품을 고르는<br />LangGraph workflow</h1>
+  <p class="sub">LLM 판단과 외부 검색이 여러 단계로 이어져 각 단계를 노드로 분리</p>
+
+  <div class="flow">
+    <div class="io"><span class="tag">INPUT</span>프로필 · 기록 · 케어 제안</div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="step shop">
+      <div class="idx">1</div>
+      <div>
+        <div class="name"><code>prepare_categories</code></div>
+        <div class="desc">LLM이 기록을 읽고 <b>검색 카테고리·검색어</b> 생성</div>
+      </div>
+    </div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="step shop">
+      <div class="idx">2</div>
+      <div>
+        <div class="name"><code>search_products</code></div>
+        <div class="desc"><b>Naver Shopping API</b>로 카테고리별 후보 검색</div>
+      </div>
+    </div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="step shop">
+      <div class="idx">3</div>
+      <div>
+        <div class="name"><code>select_recommendations</code></div>
+        <div class="desc"><b>상위 3개 후보 중 LLM이 1개 선택</b> + 추천 이유 생성</div>
+      </div>
+    </div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="step shop">
+      <div class="idx">4</div>
+      <div>
+        <div class="name"><code>build_result</code></div>
+        <div class="desc">추천 목록 확정</div>
+      </div>
+    </div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="io"><span class="tag">OUTPUT</span>상품명 · 최저가 · 판매처 · 추천 이유 카드</div>
+  </div>
+
+  <p class="foot"><span class="lab">fallback</span> · 카테고리 실패 → 추천 없이 종료 · 검색 실패 → 규칙 기반 검색 · 선택 실패 → 첫 후보 유지</p>
+</div>
+
+<div class="board" id="hospital-compact">
+  <span class="kicker hosp">병원 추천</span>
+  <h1>규칙 기반으로 안전을 우선하는<br />provider · middleware 구조</h1>
+  <p class="sub">단계가 짧고 안전 규칙이 핵심이라 LangGraph 없이 단순하게 유지</p>
+
+  <div class="flow">
+    <div class="io"><span class="tag">INPUT</span>현재 위치 · 증상 메모</div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="step hosp">
+      <div class="idx">1</div>
+      <div>
+        <div class="name">응급 여부 판단</div>
+        <div class="desc"><b>22~06시</b> 또는 응급·호흡·출혈·경련 등 키워드 감지</div>
+      </div>
+    </div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="step hosp">
+      <div class="idx">2</div>
+      <div>
+        <div class="name">반경 · 검색어 조정</div>
+        <div class="desc">응급이면 <b>반경 10km</b> · 검색어 <b>"24시 동물병원"</b></div>
+      </div>
+    </div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="step hosp">
+      <div class="idx">3</div>
+      <div>
+        <div class="name">Google Places 검색</div>
+        <div class="desc">앞단에 <b>캐시 10분 · 분당 30회</b> rate limit middleware</div>
+      </div>
+    </div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="step hosp">
+      <div class="idx">4</div>
+      <div>
+        <div class="name">정렬 · 필터</div>
+        <div class="desc"><b>24시간 → 진료 중 → 평점 → 리뷰 수 → 거리</b> 순</div>
+      </div>
+    </div>
+    <div class="edge"><span>↓</span></div>
+
+    <div class="io"><span class="tag">OUTPUT</span>지도 마커 · 거리 · 운영 상태 병원 후보</div>
+  </div>
+
+  <p class="foot"><span class="lab">fallback</span> · 검색 실패나 API key 누락 시 Google Maps 검색 링크로 다음 행동 안내</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #ffffff;
+    font-family: "Pretendard", "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo", sans-serif;
+    color: #1f2922;
+    padding: 24px;
+  }
+  .board {
+    width: 900px;
+    background: #ffffff;
+    border: 1px solid #e2e8dd;
+    border-radius: 24px;
+    padding: 36px 40px 40px;
+    margin-bottom: 40px;
+  }
+  .kicker {
+    display: inline-block;
+    font-size: 13px;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    padding: 6px 12px;
+    border-radius: 999px;
+  }
+  .kicker.shop { background: #fff2df; color: #bb721e; }
+  .kicker.hosp { background: #eaf2ff; color: #2e67a7; }
+  h1 { font-size: 28px; font-weight: 900; margin-top: 14px; letter-spacing: -0.02em; }
+  .sub { margin-top: 8px; font-size: 14px; font-weight: 600; color: #74806f; line-height: 1.6; }
+
+  .flow { margin-top: 28px; }
+  .row { display: grid; grid-template-columns: 250px 1fr; gap: 28px; align-items: center; }
+  .step {
+    border-radius: 16px;
+    padding: 14px 16px;
+    border: 1px solid #dfe6d9;
+    background: #f8faf5;
+  }
+  .step .no {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.06em; color: #9aa694;
+  }
+  .step .name { margin-top: 3px; font-size: 16px; font-weight: 900; letter-spacing: -0.01em; }
+  .step .code { font-family: "Consolas", "D2Coding", monospace; font-size: 14px; font-weight: 700; color: #16804b; }
+  .step.io { background: #ffffff; border-style: dashed; }
+  .step.shopAccent { background: #fffaf2; border-color: #f0dcc0; }
+  .step.hospAccent { background: #f4f8ff; border-color: #d2e0f2; }
+
+  .arrow { height: 26px; display: flex; align-items: center; justify-content: center; }
+  .arrow span { color: #b6c1b1; font-size: 18px; line-height: 1; }
+
+  .note { font-size: 14px; font-weight: 600; line-height: 1.7; color: #4c574a; }
+  .note b { font-weight: 800; color: #1f2922; }
+  .note .fb {
+    display: inline-block; margin-top: 6px; font-size: 12.5px; font-weight: 700;
+    background: #fdf1ee; color: #b34f3d; border-radius: 8px; padding: 3px 8px;
+  }
+  .note .fb.ok { background: #eef7ef; color: #16804b; }
+  .foot {
+    margin-top: 26px; padding-top: 18px; border-top: 1px dashed #e2e8dd;
+    font-size: 13px; font-weight: 700; color: #74806f; line-height: 1.7;
+  }
+</style>
+</head>
+<body>
+
+<div class="board" id="shopping">
+  <span class="kicker shop">쇼핑 추천 에이전트</span>
+  <h1>기록을 근거로 상품을 고르는 LangGraph workflow</h1>
+  <p class="sub">LLM 판단과 외부 검색 API가 여러 단계로 이어지기 때문에 각 단계를 노드로 분리했습니다.</p>
+
+  <div class="flow">
+    <div class="row">
+      <div class="step io"><div class="no">INPUT</div><div class="name">프로필 · 기록 · 케어 제안</div></div>
+      <div class="note">반려동물 프로필과 최근 식사·산책·배변·행동 기록을 입력으로 받습니다.</div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step shopAccent"><div class="no">NODE 1</div><div class="code">prepare_categories</div></div>
+      <div class="note">LLM이 기록을 읽고 <b>검색 카테고리와 검색어</b>를 생성합니다.<br /><span class="fb">실패 시 빈 카테고리 → 추천 없이 안전 종료</span></div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step shopAccent"><div class="no">NODE 2</div><div class="code">search_products</div></div>
+      <div class="note"><b>Naver Shopping API</b>로 카테고리별 상품 후보를 검색합니다.<br /><span class="fb">API 실패 시 규칙 기반 네이버 검색 fallback</span></div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step shopAccent"><div class="no">NODE 3</div><div class="code">select_recommendations</div></div>
+      <div class="note">검색어별 <b>상위 3개 후보 중 LLM이 1개를 선택</b>하고 추천 이유를 붙입니다.<br /><span class="fb">선택 실패 시 첫 번째 후보 유지</span></div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step shopAccent"><div class="no">NODE 4</div><div class="code">build_result</div></div>
+      <div class="note">선택된 추천 목록을 최종 결과로 확정합니다.</div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step io"><div class="no">OUTPUT</div><div class="name">추천 카드</div></div>
+      <div class="note">상품명 · 최저가 · 판매처 · <b>기록 근거 추천 이유</b>가 담긴 카드로 화면에 표시됩니다.</div>
+    </div>
+  </div>
+
+  <p class="foot">단계마다 fallback 경계를 명시해, 외부 API나 LLM이 실패해도 화면 흐름이 끊기지 않습니다.</p>
+</div>
+
+<div class="board" id="hospital">
+  <span class="kicker hosp">병원 추천</span>
+  <h1>규칙 기반으로 안전을 우선하는 provider · middleware 구조</h1>
+  <p class="sub">단계 수가 짧고 의료 안전 규칙이 핵심이라, LangGraph 대신 application agent + provider/middleware 조합으로 단순하게 유지했습니다.</p>
+
+  <div class="flow">
+    <div class="row">
+      <div class="step io"><div class="no">INPUT</div><div class="name">현재 위치 · 증상 메모</div></div>
+      <div class="note">보호자 위치 좌표와 증상 텍스트를 입력으로 받습니다.</div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step hospAccent"><div class="no">STEP 1</div><div class="name">응급 여부 판단</div></div>
+      <div class="note"><b>22시~06시</b>이거나 증상에 <b>응급 · 야간 · 24시 · 호흡 · 출혈 · 경련 · 중독</b>이 있으면 응급 모드로 전환합니다.</div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step hospAccent"><div class="no">STEP 2</div><div class="name">검색 반경 · 검색어 조정</div></div>
+      <div class="note">응급이면 반경을 <b>최소 10km</b>로 넓히고 검색어를 <b>"24시 동물병원"</b>으로 바꿔 24시간 병원만 남깁니다.</div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step hospAccent"><div class="no">STEP 3</div><div class="name">Google Places 검색</div></div>
+      <div class="note">앞단에 <b>캐시 10분 · 분당 30회 rate limit</b> middleware를 두어 외부 호출을 제어합니다.<br /><span class="fb">검색 실패·키 누락 시 Google Maps 검색 링크 fallback</span></div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step hospAccent"><div class="no">STEP 4</div><div class="name">정렬 · 필터</div></div>
+      <div class="note"><b>24시간 운영 → 진료 중 → 평점 → 리뷰 수 → 거리</b> 순으로 정렬합니다.</div>
+    </div>
+    <div class="row"><div class="arrow"><span>↓</span></div><div></div></div>
+
+    <div class="row">
+      <div class="step io"><div class="no">OUTPUT</div><div class="name">병원 후보 목록</div></div>
+      <div class="note">지도 마커와 거리·소요시간·운영 상태로 표시하고, 선택하면 <b>병원 상담 준비 흐름</b>으로 이어집니다.</div>
+    </div>
+  </div>
+
+  <p class="foot">진단을 단정하지 않고, 위험 신호가 있을 때 병원 상담으로 연결하는 안전 경계를 유지합니다.</p>
+</div>
+
+</body>
+</html>
