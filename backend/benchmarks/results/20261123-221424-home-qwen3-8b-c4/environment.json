@@ -1,0 +1,13 @@
+{
+  "machine": "home-pc",
+  "os": "Windows 11 Pro 10.0.22621",
+  "gpu": "NVIDIA GeForce RTX 3060 12GB (driver 610.88)",
+  "cpu": "Intel Core i5-13600K",
+  "ram_gb": 64,
+  "runtime": "Ollama 0.40.17 (OpenAI 호환 /v1)",
+  "model": "qwen3:8b",
+  "quantization": "Q4_K_M (4bit)",
+  "thinking": "off (extra_body.reasoning_effort = none)",
+  "ollama_num_parallel": "unset (Ollama 기본값)",
+  "network": "localhost (같은 PC에서 측정)"
+}

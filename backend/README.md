@@ -439,3 +439,22 @@ uv run python -B scripts/smoke_record_summary_provider.py
 요약 provider smoke script는 script 내부 smoke fixture helper로 in-memory SQLite seed, repository 조회, provider 조립을 만든 뒤 모델 입력으로 사용한다.
 
 이 명령들은 네트워크와 API 비용이 발생할 수 있으므로 자동 테스트에는 포함하지 않는다.
+
+## LLM 백엔드 성능 비교 (RNGD / GPU / API)
+
+Pet Log 실제 프롬프트(기록 구조화, 케어 질문, 페르소나 대화, 쇼핑 에이전트 2단계)로 OpenAI 호환 백엔드들의 TTFT, tokens/s, 비용을 비교한다. 설정과 지표 정의는 `docs/llm-backend-benchmark.md`를 본다.
+
+```bash
+cp benchmarks/backends.example.toml benchmarks/backends.toml
+uv run python -B scripts/benchmark_llm_backends.py --runs 10 --label rngd-vs-gpu
+```
+
+결과는 `benchmarks/results/<시각>-<라벨>/`에 `summary.md`, `results.json`, `requests.csv`로 남는다.
+
+여러 결과 폴더(예: RNGD 서버와 집 PC)를 하나의 비교표로 합친다.
+
+```bash
+uv run python -B scripts/compare_benchmark_results.py --baseline home-ollama-qwen3-8b --label rngd-vs-home
+```
+
+비교표는 `benchmarks/comparisons/<시각>-<라벨>/`에 `compare.md`, `compare.json`으로 남는다.
