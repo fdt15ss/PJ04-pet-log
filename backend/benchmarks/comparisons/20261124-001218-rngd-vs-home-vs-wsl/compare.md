@@ -10,6 +10,10 @@
 | `20261123-230235-home-qwen3-8b-c4` | home-pc | NVIDIA GeForce RTX 3060 12GB (driver 610.88) | Ollama 0.40.17 (OpenAI 호환 /v1) | Q4_K_M (4bit) | 16 | 1 | 4 | 256 |
 | `20261123-231611-home-qwen3-8b-q8-c1` | home-pc | NVIDIA GeForce RTX 3060 12GB (driver 610.88) | Ollama 0.40.17 (OpenAI 호환 /v1) | Q8_0 (8bit) | 10 | 1 | 1 | 256 |
 | `20261123-231901-home-qwen3-8b-q8-c4` | home-pc | NVIDIA GeForce RTX 3060 12GB (driver 610.88) | Ollama 0.40.17 (OpenAI 호환 /v1) | Q8_0 (8bit) | 16 | 1 | 4 | 256 |
+| `20261123-235931-wsl-qwen3-8b-c1` | home-pc-wsl | NVIDIA GeForce RTX 3060 12GB (driver 610.88, Windows 드라이버를 WSL에서 공유) | Ollama 0.40.17 (Linux, OpenAI 호환 /v1) | Q4_K_M (4bit) | 10 | 1 | 1 | 256 |
+| `20261124-000100-wsl-qwen3-8b-c4` | home-pc-wsl | NVIDIA GeForce RTX 3060 12GB (driver 610.88, Windows 드라이버를 WSL에서 공유) | Ollama 0.40.17 (Linux, OpenAI 호환 /v1) | Q4_K_M (4bit) | 16 | 1 | 4 | 256 |
+| `20261124-000319-wsl-qwen3-8b-q8-c1` | home-pc-wsl | NVIDIA GeForce RTX 3060 12GB (driver 610.88, Windows 드라이버를 WSL에서 공유) | Ollama 0.40.17 (Linux, OpenAI 호환 /v1) | Q8_0 (8bit) | 10 | 1 | 1 | 256 |
+| `20261124-000610-wsl-qwen3-8b-q8-c4` | home-pc-wsl | NVIDIA GeForce RTX 3060 12GB (driver 610.88, Windows 드라이버를 WSL에서 공유) | Ollama 0.40.17 (Linux, OpenAI 호환 /v1) | Q8_0 (8bit) | 16 | 1 | 4 | 256 |
 
 ## 전체 요약 (시나리오 평균)
 
@@ -18,9 +22,13 @@
 | 1 | home-ollama-qwen3-8b | `qwen3:8b` | 0.042s | 0.042s | 58.3 | 56.9 | - | 0/50 |
 | 1 | home-ollama-qwen3-8b-q8 | `qwen3:8b-q8_0` | 0.052s | 0.052s | 37.4 | 36.9 | - | 0/50 |
 | 1 | rngd-furiosa-qwen3-8b | `furiosa-ai/Qwen3-8B-FP8` | 0.027s | 0.027s | 104.4 | 102.3 | - | 0/50 |
+| 1 | wsl-ollama-qwen3-8b | `qwen3:8b` | 0.026s | 0.026s | 57.0 | 56.6 | - | 0/50 |
+| 1 | wsl-ollama-qwen3-8b-q8 | `qwen3:8b-q8_0` | 0.035s | 0.035s | 36.8 | 36.6 | - | 0/50 |
 | 4 | home-ollama-qwen3-8b | `qwen3:8b` | 4.121s | 4.121s | 58.5 | 58.2 | - | 0/80 |
 | 4 | home-ollama-qwen3-8b-q8 | `qwen3:8b-q8_0` | 8.797s | 8.797s | 37.5 | 37.4 | - | 0/80 |
 | 4 | rngd-furiosa-qwen3-8b | `furiosa-ai/Qwen3-8B-FP8` | 0.073s | 0.073s | 94.9 | 346.4 | - | 0/80 |
+| 4 | wsl-ollama-qwen3-8b | `qwen3:8b` | 4.216s | 4.216s | 57.0 | 56.9 | - | 0/80 |
+| 4 | wsl-ollama-qwen3-8b-q8 | `qwen3:8b-q8_0` | 7.783s | 7.783s | 36.8 | 36.7 | - | 0/80 |
 
 ## 시나리오별 비교
 
@@ -31,30 +39,50 @@
 | 1 | care_question | home-ollama-qwen3-8b | `20261123-230107-home-qwen3-8b-c1` | 0.041s | 0.041s | 58.9 | 56.5 | - | 0/10 | 1.00x | 1.00x |
 | 1 | care_question | home-ollama-qwen3-8b-q8 | `20261123-231611-home-qwen3-8b-q8-c1` | 0.050s | 0.050s | 37.7 | 37.3 | - | 0/10 | 0.66x | 1.22x |
 | 1 | care_question | rngd-furiosa-qwen3-8b | `20261123-135130-rngd-qwen3-8b-c1` | 0.027s | 0.027s | 104.2 | 101.6 | - | 0/10 | 1.80x | 0.65x |
+| 1 | care_question | wsl-ollama-qwen3-8b | `20261123-235931-wsl-qwen3-8b-c1` | 0.024s | 0.024s | 57.3 | 57.0 | - | 0/10 | 1.01x | 0.59x |
+| 1 | care_question | wsl-ollama-qwen3-8b-q8 | `20261124-000319-wsl-qwen3-8b-q8-c1` | 0.033s | 0.033s | 37.0 | 36.8 | - | 0/10 | 0.65x | 0.79x |
 | 1 | pet_chat | home-ollama-qwen3-8b | `20261123-230107-home-qwen3-8b-c1` | 0.040s | 0.040s | 59.5 | 57.8 | - | 0/10 | 1.00x | 1.00x |
 | 1 | pet_chat | home-ollama-qwen3-8b-q8 | `20261123-231611-home-qwen3-8b-q8-c1` | 0.050s | 0.050s | 37.9 | 37.2 | - | 0/10 | 0.64x | 1.24x |
 | 1 | pet_chat | rngd-furiosa-qwen3-8b | `20261123-135130-rngd-qwen3-8b-c1` | 0.027s | 0.027s | 104.3 | 102.8 | - | 0/10 | 1.78x | 0.67x |
+| 1 | pet_chat | wsl-ollama-qwen3-8b | `20261123-235931-wsl-qwen3-8b-c1` | 0.024s | 0.024s | 58.1 | 57.5 | - | 0/10 | 0.99x | 0.60x |
+| 1 | pet_chat | wsl-ollama-qwen3-8b-q8 | `20261124-000319-wsl-qwen3-8b-q8-c1` | 0.032s | 0.032s | 37.4 | 37.2 | - | 0/10 | 0.64x | 0.81x |
 | 1 | record_structuring | home-ollama-qwen3-8b | `20261123-230107-home-qwen3-8b-c1` | 0.043s | 0.043s | 57.3 | 56.6 | - | 0/10 | 1.00x | 1.00x |
 | 1 | record_structuring | home-ollama-qwen3-8b-q8 | `20261123-231611-home-qwen3-8b-q8-c1` | 0.054s | 0.054s | 36.7 | 36.6 | - | 0/10 | 0.65x | 1.26x |
 | 1 | record_structuring | rngd-furiosa-qwen3-8b | `20261123-135130-rngd-qwen3-8b-c1` | 0.027s | 0.027s | 104.5 | 103.7 | - | 0/10 | 1.83x | 0.63x |
+| 1 | record_structuring | wsl-ollama-qwen3-8b | `20261123-235931-wsl-qwen3-8b-c1` | 0.027s | 0.027s | 56.5 | 56.3 | - | 0/10 | 0.99x | 0.63x |
+| 1 | record_structuring | wsl-ollama-qwen3-8b-q8 | `20261124-000319-wsl-qwen3-8b-q8-c1` | 0.038s | 0.038s | 36.5 | 36.5 | - | 0/10 | 0.64x | 0.88x |
 | 1 | shopping_category | home-ollama-qwen3-8b | `20261123-230107-home-qwen3-8b-c1` | 0.043s | 0.043s | 58.2 | 57.2 | - | 0/10 | 1.00x | 1.00x |
 | 1 | shopping_category | home-ollama-qwen3-8b-q8 | `20261123-231611-home-qwen3-8b-q8-c1` | 0.053s | 0.053s | 37.4 | 37.0 | - | 0/10 | 0.65x | 1.25x |
 | 1 | shopping_category | rngd-furiosa-qwen3-8b | `20261123-135130-rngd-qwen3-8b-c1` | 0.027s | 0.027s | 104.1 | 102.1 | - | 0/10 | 1.79x | 0.64x |
+| 1 | shopping_category | wsl-ollama-qwen3-8b | `20261123-235931-wsl-qwen3-8b-c1` | 0.027s | 0.027s | 56.7 | 56.1 | - | 0/10 | 0.98x | 0.64x |
+| 1 | shopping_category | wsl-ollama-qwen3-8b-q8 | `20261124-000319-wsl-qwen3-8b-q8-c1` | 0.037s | 0.037s | 36.6 | 36.5 | - | 0/10 | 0.64x | 0.87x |
 | 1 | shopping_selection | home-ollama-qwen3-8b | `20261123-230107-home-qwen3-8b-c1` | 0.042s | 0.042s | 57.8 | 56.4 | - | 0/10 | 1.00x | 1.00x |
 | 1 | shopping_selection | home-ollama-qwen3-8b-q8 | `20261123-231611-home-qwen3-8b-q8-c1` | 0.054s | 0.054s | 37.2 | 36.4 | - | 0/10 | 0.64x | 1.27x |
 | 1 | shopping_selection | rngd-furiosa-qwen3-8b | `20261123-135130-rngd-qwen3-8b-c1` | 0.027s | 0.027s | 104.6 | 101.1 | - | 0/10 | 1.79x | 0.64x |
+| 1 | shopping_selection | wsl-ollama-qwen3-8b | `20261123-235931-wsl-qwen3-8b-c1` | 0.026s | 0.026s | 56.4 | 56.0 | - | 0/10 | 0.99x | 0.60x |
+| 1 | shopping_selection | wsl-ollama-qwen3-8b-q8 | `20261124-000319-wsl-qwen3-8b-q8-c1` | 0.037s | 0.037s | 36.5 | 36.1 | - | 0/10 | 0.64x | 0.88x |
 | 4 | care_question | home-ollama-qwen3-8b | `20261123-230235-home-qwen3-8b-c4` | 3.586s | 3.586s | 59.1 | 58.8 | - | 0/16 | 1.00x | 1.00x |
 | 4 | care_question | home-ollama-qwen3-8b-q8 | `20261123-231901-home-qwen3-8b-q8-c4` | 7.267s | 7.267s | 37.8 | 37.7 | - | 0/16 | 0.64x | 2.03x |
 | 4 | care_question | rngd-furiosa-qwen3-8b | `20261123-135328-rngd-qwen3-8b-c4` | 0.079s | 0.079s | 97.8 | 352.8 | - | 0/16 | 6.00x | 0.02x |
+| 4 | care_question | wsl-ollama-qwen3-8b | `20261124-000100-wsl-qwen3-8b-c4` | 3.568s | 3.568s | 57.5 | 57.4 | - | 0/16 | 0.98x | 1.00x |
+| 4 | care_question | wsl-ollama-qwen3-8b-q8 | `20261124-000610-wsl-qwen3-8b-q8-c4` | 3.442s | 3.442s | 37.0 | 36.9 | - | 0/16 | 0.63x | 0.96x |
 | 4 | pet_chat | home-ollama-qwen3-8b | `20261123-230235-home-qwen3-8b-c4` | 2.653s | 2.653s | 59.6 | 59.2 | - | 0/16 | 1.00x | 1.00x |
 | 4 | pet_chat | home-ollama-qwen3-8b-q8 | `20261123-231901-home-qwen3-8b-q8-c4` | 4.087s | 4.087s | 37.9 | 37.7 | - | 0/16 | 0.64x | 1.54x |
 | 4 | pet_chat | rngd-furiosa-qwen3-8b | `20261123-135328-rngd-qwen3-8b-c4` | 0.060s | 0.060s | 97.1 | 332.3 | - | 0/16 | 5.61x | 0.02x |
+| 4 | pet_chat | wsl-ollama-qwen3-8b | `20261124-000100-wsl-qwen3-8b-c4` | 2.821s | 2.821s | 57.9 | 57.8 | - | 0/16 | 0.98x | 1.06x |
+| 4 | pet_chat | wsl-ollama-qwen3-8b-q8 | `20261124-000610-wsl-qwen3-8b-q8-c4` | 4.144s | 4.144s | 37.2 | 37.2 | - | 0/16 | 0.63x | 1.56x |
 | 4 | record_structuring | home-ollama-qwen3-8b | `20261123-230235-home-qwen3-8b-c4` | 6.010s | 6.010s | 57.8 | 57.6 | - | 0/16 | 1.00x | 1.00x |
 | 4 | record_structuring | home-ollama-qwen3-8b-q8 | `20261123-231901-home-qwen3-8b-q8-c4` | 20.738s | 20.738s | 37.1 | 37.1 | - | 0/16 | 0.64x | 3.45x |
 | 4 | record_structuring | rngd-furiosa-qwen3-8b | `20261123-135328-rngd-qwen3-8b-c4` | 0.080s | 0.080s | 93.3 | 363.2 | - | 0/16 | 6.31x | 0.01x |
+| 4 | record_structuring | wsl-ollama-qwen3-8b | `20261124-000100-wsl-qwen3-8b-c4` | 6.145s | 6.145s | 56.4 | 56.3 | - | 0/16 | 0.98x | 1.02x |
+| 4 | record_structuring | wsl-ollama-qwen3-8b-q8 | `20261124-000610-wsl-qwen3-8b-q8-c4` | 19.270s | 19.270s | 36.5 | 36.5 | - | 0/16 | 0.63x | 3.21x |
 | 4 | shopping_category | home-ollama-qwen3-8b | `20261123-230235-home-qwen3-8b-c4` | 4.848s | 4.848s | 58.1 | 57.8 | - | 0/16 | 1.00x | 1.00x |
 | 4 | shopping_category | home-ollama-qwen3-8b-q8 | `20261123-231901-home-qwen3-8b-q8-c4` | 7.655s | 7.655s | 37.5 | 37.3 | - | 0/16 | 0.65x | 1.58x |
 | 4 | shopping_category | rngd-furiosa-qwen3-8b | `20261123-135328-rngd-qwen3-8b-c4` | 0.080s | 0.080s | 95.9 | 358.0 | - | 0/16 | 6.20x | 0.02x |
+| 4 | shopping_category | wsl-ollama-qwen3-8b | `20261124-000100-wsl-qwen3-8b-c4` | 4.949s | 4.949s | 56.8 | 56.6 | - | 0/16 | 0.98x | 1.02x |
+| 4 | shopping_category | wsl-ollama-qwen3-8b-q8 | `20261124-000610-wsl-qwen3-8b-q8-c4` | 7.740s | 7.740s | 36.6 | 36.6 | - | 0/16 | 0.63x | 1.60x |
 | 4 | shopping_selection | home-ollama-qwen3-8b | `20261123-230235-home-qwen3-8b-c4` | 3.510s | 3.510s | 57.9 | 57.5 | - | 0/16 | 1.00x | 1.00x |
 | 4 | shopping_selection | home-ollama-qwen3-8b-q8 | `20261123-231901-home-qwen3-8b-q8-c4` | 4.237s | 4.237s | 37.2 | 37.0 | - | 0/16 | 0.64x | 1.21x |
 | 4 | shopping_selection | rngd-furiosa-qwen3-8b | `20261123-135328-rngd-qwen3-8b-c4` | 0.066s | 0.066s | 90.2 | 326.0 | - | 0/16 | 5.67x | 0.02x |
+| 4 | shopping_selection | wsl-ollama-qwen3-8b | `20261124-000100-wsl-qwen3-8b-c4` | 3.596s | 3.596s | 56.3 | 56.2 | - | 0/16 | 0.98x | 1.02x |
+| 4 | shopping_selection | wsl-ollama-qwen3-8b-q8 | `20261124-000610-wsl-qwen3-8b-q8-c4` | 4.318s | 4.318s | 36.5 | 36.4 | - | 0/16 | 0.63x | 1.23x |
