@@ -274,6 +274,26 @@ rg -n "fastapi|openai|sqlalchemy|sqlite|postgres|psycopg" src/application src/do
 
 이 규칙이 지켜졌기 때문에 SQLite 스키마가 바뀌거나 LLM provider를 교체해도 상위 코드는 그대로 유지됐습니다. 전체 검증 명령은 [README](README.md)에 정리했습니다.
 
+### 10.1 NPU(RNGD) 추론 성능 비교
+
+LLM 백엔드를 FuriosaAI RNGD(NPU)로 바꿨을 때 응답이 얼마나 빨라지는지 쟀습니다. 같은 Qwen3 8B 모델을 집 PC의 GPU와 RNGD에서 돌리고, Pet Log가 실제로 보내는 프롬프트 5종(기록 구조화, 케어 질문, 반려동물 대화, 쇼핑 에이전트 2단계)으로 측정했습니다. 앱 코드는 바꾸지 않고 OpenAI 호환 서버 주소만 바꿨습니다. 집 PC는 가정에서 흔히 쓰는 4bit와, RNGD의 FP8과 비트 수를 맞춘 8bit 두 가지로 쟀습니다.
+
+| 동시 요청 | 구성 | TTFT p50 | 요청당 생성 속도 | 전체 처리량 | 오류 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| 1개 | 집 PC · Ollama · Q4_K_M (4bit) | 0.042초 | 58.3 tok/s | 56.9 tok/s | 0 / 50 |
+| 1개 | 집 PC · Ollama · Q8_0 (8bit) | 0.052초 | 37.4 tok/s | 36.9 tok/s | 0 / 50 |
+| 1개 | RNGD · furiosa-llm · FP8 | 0.027초 | 104.4 tok/s | 102.3 tok/s | 0 / 50 |
+| 4개 | 집 PC · Ollama · Q4_K_M (4bit) | 4.121초 | 58.5 tok/s | 58.2 tok/s | 0 / 80 |
+| 4개 | 집 PC · Ollama · Q8_0 (8bit) | 8.797초 | 37.5 tok/s | 37.4 tok/s | 0 / 80 |
+| 4개 | RNGD · furiosa-llm · FP8 | 0.073초 | 94.9 tok/s | **346.4 tok/s** | 0 / 80 |
+
+- **요청 1개**: RNGD가 생성 속도 기준 4bit 대비 1.8배, 8bit 대비 2.8배 빠릅니다. 집 PC는 8bit로 올리면 읽어야 할 가중치가 두 배가 되어 오히려 36% 느려졌습니다.
+- **동시 요청 4개**: 집 PC의 Ollama는 요청을 하나씩 처리해 처리량이 그대로이고, 뒤 요청은 수 초를 기다렸습니다. RNGD는 4개를 한꺼번에 처리해 처리량이 4bit 대비 **6.0배**, 8bit 대비 **9.3배**, 첫 토큰은 **56~120배** 빨랐습니다. 대신 요청당 생성 속도는 약 9% 줄었습니다.
+- **측정 환경**: 집 PC는 RTX 3060 12GB, Ollama 0.40.17, `qwen3:8b`(Q4_K_M)와 `qwen3:8b-q8_0`(Q8_0, 전부 GPU에 적재). RNGD는 1장, furiosa-llm 2026.4.0, `furiosa-ai/Qwen3-8B-FP8`. 모두 같은 머신 안에서 localhost로 호출했고, thinking을 끄고 최대 출력 256토큰, 워밍업 1회로 맞췄습니다.
+- **한계**: Ollama에는 FP8 형식이 없고 RTX 3060은 FP8 연산을 지원하지 않아 정수 8bit(Q8_0)로 비트 수만 맞췄습니다. 서버 엔진(Ollama vs furiosa-llm)도 다르므로 하드웨어 단독 비교가 아니라 구성 비교입니다. 시간당 비용과 전력은 재지 않았습니다.
+
+측정 도구는 앱의 프롬프트 빌더를 그대로 재사용하고, 스트리밍으로 첫 토큰 시간을 따로 기록합니다. 앱은 응답을 한 번에 받는 방식이라 앱 안에서는 첫 토큰 시점을 알 수 없기 때문입니다. 처음 로컬 Gemma로 측정했을 때 thinking 모델이 출력 토큰을 모두 추론에 써서 답이 비는 문제가 있었고, 첫 생성 토큰과 첫 답변 토큰을 나눠 기록하도록 바꿨습니다. 실행 방법과 비교 절차는 [LLM 백엔드 벤치마크 문서](backend/docs/llm-backend-benchmark.md)에, 결과 원본은 [benchmarks 폴더](backend/benchmarks/comparisons/)에 있습니다.
+
 ## 11. 배포 준비
 
 프론트엔드는 Next.js App Router와 API route를 사용하므로 정적 호스팅이 아니라 **Node.js 런타임이 있는 Azure App Service**를 기준으로 구성했습니다. 백엔드도 같은 App Service에 FastAPI로 배포합니다. 양쪽 모두 package/deploy 2단계 스크립트를 제공해, 빌드 산출물 생성과 배포를 분리했습니다.
