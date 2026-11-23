@@ -2048,7 +2048,7 @@
         <p class="section-desc">
           같은 Qwen3 8B 모델을 집 PC의 GPU와 FuriosaAI RNGD(NPU)에서 돌리고, Pet Log가 실제로 보내는 프롬프트로 첫 토큰 시간(TTFT)과 초당 토큰 수를 쟀습니다.
           앱 코드는 바꾸지 않고 OpenAI 호환 서버 주소만 바꿔 같은 측정 스크립트로 비교했습니다.
-          집 PC는 가정에서 흔히 쓰는 4bit와, RNGD의 FP8과 비트 수를 맞춘 8bit 두 가지로 쟀습니다.
+          집 PC는 가정에서 흔히 쓰는 4bit와, RNGD의 FP8과 비트 수를 맞춘 8bit 두 가지로 쟀고, Windows와 WSL(리눅스) 두 OS에서 모두 측정했습니다.
         </p>
       </div>
 
@@ -2071,7 +2071,7 @@
         </div>
         <div class="metric-card">
           <div class="metric-num">0건</div>
-          <div class="metric-label">오류 (전체 390건 요청)</div>
+          <div class="metric-label">오류 (전체 650건 요청)</div>
           <div class="metric-sub">추론 토큰 혼입도 0건</div>
         </div>
       </div>
@@ -2250,6 +2250,42 @@
             시간당 비용과 전력은 재지 않았고, 동시 요청 8·16개에서의 차이는 다음 측정 과제입니다.
           </p>
         </div>
+      </div>
+
+      <!-- Windows vs WSL -->
+      <div class="section-header" style="margin-top: 4rem; margin-bottom: 0;">
+        <h3 style="font-size: 1.35rem; font-weight: 800;">🐧 OS를 바꾸면 격차가 줄어들까? — Windows vs WSL</h3>
+        <p class="section-desc">
+          RNGD와의 차이가 Windows 탓인지 확인하려고, 같은 PC에서 WSL2(Ubuntu 26.04.1)에 Ollama를 따로 설치해 같은 조건으로 다시 쟀습니다. Windows Ollama는 끄고 측정했습니다.
+        </p>
+      </div>
+      <div class="table-scroll">
+        <table class="tech-table">
+          <thead>
+            <tr>
+              <th>지표</th>
+              <th>Windows 4bit</th>
+              <th>WSL 4bit</th>
+              <th>Windows 8bit</th>
+              <th>WSL 8bit</th>
+              <th>RNGD FP8</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>요청 1개 · TTFT</td><td>0.042초</td><td>0.026초</td><td>0.052초</td><td>0.035초</td><td>0.027초</td></tr>
+            <tr><td>요청 1개 · 생성 속도</td><td>58.3 tok/s</td><td>57.0 tok/s</td><td>37.4 tok/s</td><td>36.8 tok/s</td><td>104.4 tok/s</td></tr>
+            <tr><td>동시 4개 · TTFT</td><td>4.121초</td><td>4.216초</td><td>8.797초</td><td>7.783초</td><td>0.073초</td></tr>
+            <tr><td>동시 4개 · 처리량</td><td>58.2 tok/s</td><td>56.9 tok/s</td><td>37.4 tok/s</td><td>36.7 tok/s</td><td>346.4 tok/s</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3 class="card-title">🔍 OS가 아니라 동시 처리 방식이 차이를 만든다</h3>
+        <p class="card-text">
+          생성 속도는 Windows와 WSL이 2% 안쪽으로 같았습니다. 생성 속도는 GPU가 가중치를 읽는 속도에 달려 있어 OS 영향이 거의 없습니다.
+          요청 하나의 첫 토큰은 WSL이 35~40% 빨라 RNGD와 비슷한 수준까지 내려왔지만, 동시 요청에서는 WSL도 요청을 하나씩 처리해 처리량이 그대로이고 뒤 요청은 4~8초를 기다렸습니다.
+          리눅스로 옮겨도 RNGD와의 격차는 줄지 않았고, 격차의 원인은 OS가 아니라 서버가 동시 요청을 묶어 처리하는지 여부라는 걸 확인했습니다.
+        </p>
       </div>
     </div>
   </section>
