@@ -1,0 +1,9 @@
+{
+  "machine": "rngd-server",
+  "accelerator": "FuriosaAI RNGD x1 (npu:7)",
+  "runtime": "furiosa-llm 2026.4.0 (--enable-overlap-scheduling)",
+  "model": "furiosa-ai/Qwen3-8B-FP8",
+  "quantization": "FP8",
+  "thinking": "off (chat_template_kwargs.enable_thinking = false)",
+  "network": "localhost (같은 서버에서 측정)"
+}

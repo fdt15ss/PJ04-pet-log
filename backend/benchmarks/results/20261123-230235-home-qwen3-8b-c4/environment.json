@@ -9,5 +9,6 @@
   "quantization": "Q4_K_M (4bit)",
   "thinking": "off (extra_body.reasoning_effort = none)",
   "ollama_num_parallel": "unset (Ollama 기본값)",
-  "network": "localhost (같은 PC에서 측정)"
+  "network": "localhost (같은 PC에서 측정)",
+  "background_apps": "BlueStacks 종료 후 측정 (유휴 GPU 사용률 4~8%)"
 }

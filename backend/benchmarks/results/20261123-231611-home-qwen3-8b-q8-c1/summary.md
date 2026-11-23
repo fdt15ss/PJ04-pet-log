@@ -1,16 +1,16 @@
 # LLM 백엔드 성능 비교 결과
 
-- 측정 시각: 2026-11-23T22:12:52
+- 측정 시각: 2026-11-23T23:16:11
 - 반복 횟수(시나리오당): 10 / 워밍업: 1 / 동시성: 1
 - 최대 출력 토큰: 256
 
 | 시나리오 | 백엔드 | 종류 | 모델 | TTFT p50 | TTFT p95 | 첫 답변 p50 | 생성 tok/s p50 | 처리량 tok/s | 1K 요청 비용 | 1M 출력 토큰 비용 | 오류 |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| record_structuring | home-ollama-qwen3-8b | gpu | `qwen3:8b` | 0.046s | 0.053s | 0.046s | 52.9 | 51.9 | - | - | 0/10 |
-| care_question | home-ollama-qwen3-8b | gpu | `qwen3:8b` | 0.044s | 0.047s | 0.044s | 53.9 | 52.3 | - | - | 0/10 |
-| pet_chat | home-ollama-qwen3-8b | gpu | `qwen3:8b` | 0.043s | 0.045s | 0.043s | 54.7 | 53.6 | - | - | 0/10 |
-| shopping_category | home-ollama-qwen3-8b | gpu | `qwen3:8b` | 0.047s | 0.049s | 0.047s | 53.2 | 52.3 | - | - | 0/10 |
-| shopping_selection | home-ollama-qwen3-8b | gpu | `qwen3:8b` | 0.048s | 0.051s | 0.048s | 53.2 | 50.8 | - | - | 0/10 |
+| record_structuring | home-ollama-qwen3-8b-q8 | gpu | `qwen3:8b-q8_0` | 0.054s | 0.056s | 0.054s | 36.7 | 36.6 | - | - | 0/10 |
+| care_question | home-ollama-qwen3-8b-q8 | gpu | `qwen3:8b-q8_0` | 0.050s | 0.052s | 0.050s | 37.7 | 37.3 | - | - | 0/10 |
+| pet_chat | home-ollama-qwen3-8b-q8 | gpu | `qwen3:8b-q8_0` | 0.050s | 0.059s | 0.050s | 37.9 | 37.2 | - | - | 0/10 |
+| shopping_category | home-ollama-qwen3-8b-q8 | gpu | `qwen3:8b-q8_0` | 0.053s | 0.054s | 0.053s | 37.4 | 37.0 | - | - | 0/10 |
+| shopping_selection | home-ollama-qwen3-8b-q8 | gpu | `qwen3:8b-q8_0` | 0.054s | 0.076s | 0.054s | 37.2 | 36.4 | - | - | 0/10 |
 
 ## 시나리오 설명
 

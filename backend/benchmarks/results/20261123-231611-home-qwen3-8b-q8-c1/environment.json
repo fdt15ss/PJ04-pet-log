@@ -1,0 +1,16 @@
+{
+  "machine": "home-pc",
+  "os": "Windows 11 Pro 10.0.22621",
+  "gpu": "NVIDIA GeForce RTX 3060 12GB (driver 610.88)",
+  "cpu": "Intel Core i5-13600K",
+  "ram_gb": 64,
+  "runtime": "Ollama 0.40.17 (OpenAI 호환 /v1)",
+  "model": "qwen3:8b-q8_0",
+  "quantization": "Q8_0 (8bit)",
+  "thinking": "off (extra_body.reasoning_effort = none)",
+  "ollama_num_parallel": "unset (Ollama 기본값)",
+  "network": "localhost (같은 PC에서 측정)",
+  "background_apps": "BlueStacks 종료 후 측정 (유휴 GPU 사용률 4~8%)",
+  "note": "RNGD FP8과 비트 수를 맞춘 비교 (Ollama/GGUF에는 FP8 없음, RTX 3060은 FP8 하드웨어 미지원)",
+  "gpu_offload": "100% GPU (ollama ps)"
+}
