@@ -1,0 +1,12 @@
+{
+  "machine": "home-pc-wsl",
+  "os": "WSL2 Ubuntu 26.04.1 LTS (kernel 6.18.58.1-microsoft-standard-WSL2) on Windows 11 Pro",
+  "gpu": "NVIDIA GeForce RTX 3060 12GB (driver 610.88, Windows 드라이버를 WSL에서 공유)",
+  "cpu": "Intel Core i5-13600K",
+  "ram_gb": 64,
+  "runtime": "Ollama 0.40.17 (Linux, OpenAI 호환 /v1)",
+  "thinking": "off (extra_body.reasoning_effort = none)",
+  "network": "localhost (WSL 안에서 측정, Windows Ollama 종료)",
+  "model": "qwen3:8b-q8_0",
+  "quantization": "Q8_0 (8bit)"
+}
